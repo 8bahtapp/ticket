@@ -97,15 +97,36 @@ button, input, select, textarea{ font-family:inherit; font-size:13px; }
 .badge-dot{ width:6px; height:6px; border-radius:50%; }
 .badge-new{ color:var(--st-new); background:var(--st-new-bg); }
 .badge-new .badge-dot{ background:var(--st-new); }
+.badge-progress{ color:#6a3fb0; background:#f1eafb; }
+.badge-progress .badge-dot{ background:#6a3fb0; }
 .badge-pending{ color:var(--st-pending); background:var(--st-pending-bg); }
 .badge-pending .badge-dot{ background:var(--st-pending); }
 .badge-resolved{ color:var(--st-resolved); background:var(--st-resolved-bg); }
 .badge-resolved .badge-dot{ background:var(--st-resolved); }
-.badge-closed{ color:var(--st-closed); background:var(--st-closed-bg); }
-.badge-closed .badge-dot{ background:var(--st-closed); }
+.badge-cancel{ color:var(--st-closed); background:var(--st-closed-bg); text-decoration:line-through; }
+.badge-cancel .badge-dot{ background:var(--st-closed); }
+.badge-closed{ color:var(--st-resolved); background:var(--st-resolved-bg); }
+.badge-closed .badge-dot{ background:var(--st-resolved); }
 .badge-breach{ color:var(--st-breach); background:var(--st-breach-bg); }
 .badge-breach .badge-dot{ background:var(--st-breach); }
 .badge-role{ color:var(--accent); background:var(--accent-soft); }
+
+/* ---------------------------------------------------------------- modal */
+.modal-overlay{
+  position:fixed; inset:0; background:rgba(20,24,28,.45);
+  display:flex; align-items:center; justify-content:center; z-index:100; padding:20px;
+}
+.modal-card{
+  width:440px; max-width:100%; background:var(--surface); border-radius:8px;
+  box-shadow:var(--shadow-2); padding:20px 22px; border:1px solid var(--border);
+}
+.modal-textarea{
+  width:100%; min-height:90px; padding:10px 12px; border:1px solid var(--border-strong);
+  border-radius:var(--radius-sm); resize:vertical; font-family:inherit; font-size:13px; margin-top:4px;
+}
+.modal-error{ color:var(--st-breach); font-size:12px; margin-top:6px; }
+.modal-actions{ display:flex; justify-content:flex-end; gap:8px; margin-top:14px; }
+.modal-note{ font-size:12px; color:var(--text-soft); background:var(--surface-2); border:1px solid var(--border); border-radius:var(--radius-sm); padding:8px 10px; margin-top:10px; }
 
 /* ---------------------------------------------------------------- layout */
 .app{ display:flex; min-height:100vh; }

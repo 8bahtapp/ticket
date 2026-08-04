@@ -78,16 +78,61 @@ function setTopbarContext(html){
   if(el) el.innerHTML = html;
 }
 
+/* ---- status vocabulary: new / in_progress / pending / cancel / closed ---- */
+const STATUS_META = {
+  new:         { cls:"badge-new",      label:"ใหม่" },
+  in_progress: { cls:"badge-progress", label:"กำลังดำเนินการ" },
+  pending:     { cls:"badge-pending",  label:"รอดำเนินการ" },
+  cancel:      { cls:"badge-cancel",   label:"ยกเลิก" },
+  closed:      { cls:"badge-closed",   label:"ปิดเคส" },
+};
+
 function statusBadge(status){
-  const map = {
-    new:{cls:"badge-new", label:"ใหม่"},
-    pending:{cls:"badge-pending", label:"รอดำเนินการ"},
-    resolved:{cls:"badge-resolved", label:"แก้ไขแล้ว"},
-    closed:{cls:"badge-closed", label:"ปิดเคส"},
-    breach:{cls:"badge-breach", label:"เกิน SLA"},
-  };
-  const s = map[status] || map.new;
+  const s = STATUS_META[status] || STATUS_META.new;
   return `<span class="badge ${s.cls}"><span class="badge-dot"></span>${s.label}</span>`;
 }
 
-function timeAgoLabel(t){ return t; }
+function breachBadge(ticket){
+  if(!ticket || !ticket.breach) return "";
+  return `<span class="badge badge-breach"><span class="badge-dot"></span>เกิน SLA</span>`;
+}
+
+/* ---------------------------------------------------------------- modal */
+function closeModal(){
+  const el = document.getElementById("modalOverlay");
+  if(el) el.remove();
+}
+
+/**
+ * opts: { title, description, placeholder, confirmLabel, requireText, onConfirm(text) }
+ */
+function openReasonModal(opts){
+  closeModal();
+  const overlay = document.createElement("div");
+  overlay.id = "modalOverlay";
+  overlay.className = "modal-overlay";
+  overlay.innerHTML = `
+    <div class="modal-card">
+      <h3>${opts.title}</h3>
+      ${opts.description ? `<p class="small" style="margin-bottom:12px;">${opts.description}</p>` : ""}
+      <textarea class="modal-textarea" id="modalTextarea" placeholder="${opts.placeholder || ''}"></textarea>
+      <div class="modal-error" id="modalError" style="display:none;">กรุณากรอกข้อมูลก่อนยืนยัน</div>
+      <div class="modal-actions">
+        <button class="btn" onclick="closeModal()">ยกเลิก</button>
+        <button class="btn btn-primary" id="modalConfirmBtn">${opts.confirmLabel || 'ยืนยัน'}</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  overlay.addEventListener("click", (e) => { if(e.target === overlay) closeModal(); });
+
+  document.getElementById("modalConfirmBtn").addEventListener("click", () => {
+    const val = document.getElementById("modalTextarea").value.trim();
+    if(opts.requireText !== false && !val){
+      document.getElementById("modalError").style.display = "block";
+      return;
+    }
+    closeModal();
+    if(opts.onConfirm) opts.onConfirm(val);
+  });
+}
