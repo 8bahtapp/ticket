@@ -19,8 +19,8 @@
     <div class="content">
       <div class="content-header">
         <div>
-          <h1 id="pageTitle">ภาพรวม</h1>
-          <p class="subtitle" id="pageSub">สรุปสถานะเคสและ SLA ประจำวันนี้</p>
+          <h1>ภาพรวม</h1>
+          <p class="subtitle">สรุปสถานะเคสและคุณภาพการให้บริการประจำวันนี้</p>
         </div>
         <div class="filters">
           <select class="select">
@@ -32,40 +32,16 @@
         </div>
       </div>
 
-      <div class="grid grid-4" style="margin-bottom:16px;">
-        <div class="card kpi">
-          <div class="label">FRT — First Response Time</div>
-          <div class="value">3.2 นาที</div>
-          <div class="flex between">
-            <span class="delta delta-up">▼ 8% จากเดือนก่อน</span>
-          </div>
-          <div class="target">เป้าหมาย &lt; 5 นาที</div>
-        </div>
-        <div class="card kpi">
-          <div class="label">MTTR — Mean Time to Resolution</div>
-          <div class="value">41 นาที</div>
-          <div class="flex between">
-            <span class="delta delta-up">▼ 3% จากเดือนก่อน</span>
-          </div>
-          <div class="target">เป้าหมาย &lt; 60 นาที</div>
-        </div>
-        <div class="card kpi">
-          <div class="label">SLA Breach Rate</div>
-          <div class="value">6.4%</div>
-          <div class="flex between">
-            <span class="delta delta-down">▲ 1.2% จากเดือนก่อน</span>
-          </div>
-          <div class="target">เป้าหมาย &lt; 5%</div>
-        </div>
-        <div class="card kpi">
-          <div class="label">CSAT Score</div>
-          <div class="value">4.6 / 5</div>
-          <div class="flex between">
-            <span class="delta delta-up">▲ 0.1 จากเดือนก่อน</span>
-          </div>
-          <div class="target">จาก 312 แบบประเมิน</div>
+      <!-- ticket status overview -->
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-head"><h3>สถานะเคสทั้งหมด</h3><span class="small">คลิกเพื่อดูรายการเคสในสถานะนั้น</span></div>
+        <div class="card-pad">
+          <div class="grid" style="grid-template-columns:repeat(6,1fr); gap:10px;" id="statusChips"></div>
+          <div class="chart-placeholder" id="statusChart" style="margin-top:16px;"></div>
         </div>
       </div>
+
+      <div class="grid grid-4" style="margin-bottom:16px;" id="kpiCards"></div>
 
       <div class="grid grid-2" style="margin-bottom:16px; align-items:start;">
         <div class="card">
@@ -95,7 +71,7 @@
         <div class="table-wrap">
           <table>
             <thead>
-              <tr><th>Ticket ID</th><th>บริษัท</th><th>สถานะ</th><th>ทีม</th><th>ผู้รับผิดชอบ</th><th>ช่องทาง</th><th>รอมาแล้ว</th></tr>
+              <tr><th>Ticket ID</th><th>บริษัท</th><th>สถานะ</th><th>ทีม / สินค้า</th><th>ผู้รับผิดชอบ</th><th>ช่องทาง</th><th>รอมาแล้ว</th></tr>
             </thead>
             <tbody id="recentTickets"></tbody>
           </table>
@@ -111,17 +87,46 @@
 <script>
   const u = renderShell("dashboard");
   if(u){
-    setTopbarContext(`Role ปัจจุบัน: <span class="badge badge-role">${u.roleLabel}</span> ${u.role !== "admin" ? "· มองเห็นเฉพาะ "+u.team : "· มองเห็นทุกทีม"}`);
+    setTopbarContext(`Role ปัจจุบัน: <span class="badge badge-role">${u.roleLabel}</span> ${u.role !== "admin" ? "· มองเห็นเฉพาะทีม "+u.team : "· มองเห็นทุกทีม"}`);
 
-    // scope tickets by role, same logic reused on tickets.html
-    const visibleTickets = u.role === "admin" ? MOCK_TICKETS : MOCK_TICKETS.filter(t => t.team === u.team || u.role === "supervisor");
+    const visibleTickets = u.role === "admin" ? MOCK_TICKETS : (u.role === "supervisor" ? MOCK_TICKETS : MOCK_TICKETS.filter(t => t.team === u.team));
 
-    document.getElementById("recentTickets").innerHTML = visibleTickets.slice(0,5).map(t => `
+    // status chips
+    document.getElementById("statusChips").innerHTML = MOCK_STATUS_OVERVIEW.map(s => `
+      <div class="card" style="padding:12px; cursor:pointer;" onclick="window.location.href='tickets.html'" title="${s.hint || ''}">
+        <div class="small" style="font-weight:700; letter-spacing:.03em;">${s.label}</div>
+        <div style="font-size:22px; font-weight:700; margin-top:4px;">${s.count}</div>
+      </div>
+    `).join("");
+
+    const maxS = Math.max(...MOCK_STATUS_OVERVIEW.map(x=>x.count));
+    document.getElementById("statusChart").innerHTML = MOCK_STATUS_OVERVIEW.map(s => `
+      <div style="flex:1; display:flex; flex-direction:column; align-items:center;">
+        <div class="bar" style="height:140px; width:100%;">
+          <div class="bar-fill" style="height:${(s.count/maxS*100).toFixed(0)}%;"></div>
+        </div>
+        <div class="bar-label">${s.label}</div>
+      </div>
+    `).join("");
+
+    // KPI cards, plain-language labels
+    document.getElementById("kpiCards").innerHTML = Object.values(MOCK_KPIS).map(k => `
+      <div class="card kpi">
+        <div class="label">${k.label} <span class="small" style="font-weight:400;">(${k.abbr})</span></div>
+        <div class="value">${k.value}</div>
+        <div class="flex between">
+          <span class="delta ${k.up ? 'delta-up' : 'delta-down'}">${k.up ? '▼' : '▲'} ${k.delta}</span>
+        </div>
+        <div class="target">${k.target}</div>
+      </div>
+    `).join("");
+
+    document.getElementById("recentTickets").innerHTML = visibleTickets.slice(0,6).map(t => `
       <tr onclick="window.location.href='tickets.html?id=${t.id}'">
         <td class="mono">${t.id}</td>
         <td>${t.company}</td>
-        <td>${statusBadge(t.status)}</td>
-        <td>${t.team}</td>
+        <td>${statusBadge(t.status)} ${breachBadge(t)}</td>
+        <td>${t.team} / ${t.product}</td>
         <td>${t.assignee}</td>
         <td>${t.channel}</td>
         <td>${t.waiting}</td>

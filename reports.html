@@ -23,37 +23,26 @@
           <p class="subtitle">เปรียบเทียบข้อมูลย้อนหลัง แยกตามทีม/สินค้า พร้อม Export</p>
         </div>
         <div class="filters">
-          <select class="select"><option>ทุกทีม</option><option>Adobe/CAD</option><option>Autodesk</option><option>Rendering</option></select>
+          <select class="select"><option>ทุกทีม</option><option>MIS</option><option>Ci2D</option><option>Ci3D</option><option>Ci8baht</option><option>MIH</option></select>
           <select class="select"><option>7 เดือนล่าสุด</option><option>ปีนี้</option><option>ปีก่อน</option></select>
           <button class="btn btn-primary">Export CSV</button>
         </div>
       </div>
 
-      <div class="grid grid-4" style="margin-bottom:16px;">
-        <div class="card kpi"><div class="label">FRT เฉลี่ย</div><div class="value">3.2 นาที</div><div class="target">เป้าหมาย &lt; 5 นาที</div></div>
-        <div class="card kpi"><div class="label">MTTR เฉลี่ย</div><div class="value">41 นาที</div><div class="target">เป้าหมาย &lt; 60 นาที</div></div>
-        <div class="card kpi"><div class="label">SLA Breach Rate</div><div class="value">6.4%</div><div class="target">เป้าหมาย &lt; 5%</div></div>
-        <div class="card kpi"><div class="label">CSAT เฉลี่ย</div><div class="value">4.6 / 5</div><div class="target">312 แบบประเมิน</div></div>
-      </div>
+      <div class="grid grid-4" style="margin-bottom:16px;" id="kpiCards"></div>
 
       <div class="card" style="margin-bottom:16px;">
         <div class="card-head"><h3>จำนวนเคสย้อนหลัง 7 เดือน</h3><span class="small">แยกตามเดือน</span></div>
         <div class="card-pad"><div class="chart-placeholder" id="monthlyChart2"></div></div>
       </div>
 
-      <div class="grid grid-2">
+      <div class="grid grid-2" style="margin-bottom:16px;">
         <div class="card">
-          <div class="card-head"><h3>CSAT แยกตามสินค้า</h3></div>
+          <div class="card-head"><h3>คะแนนความพึงพอใจ แยกตามสินค้า</h3></div>
           <div class="card-pad">
             <table>
-              <thead><tr><th>สินค้า</th><th>CSAT</th><th>จำนวนรีวิว</th></tr></thead>
-              <tbody>
-                <tr><td>SketchUp Studio</td><td>4.8 / 5</td><td>84</td></tr>
-                <tr><td>Adobe Creative Cloud</td><td>4.5 / 5</td><td>102</td></tr>
-                <tr><td>AutoCAD LT</td><td>4.4 / 5</td><td>61</td></tr>
-                <tr><td>D5 Render / Enscape</td><td>4.7 / 5</td><td>39</td></tr>
-                <tr><td>BIM Bundle</td><td>4.3 / 5</td><td>26</td></tr>
-              </tbody>
+              <thead><tr><th>ทีม</th><th>สินค้า</th><th>CSAT</th><th>จำนวนรีวิว</th></tr></thead>
+              <tbody id="csatByProduct"></tbody>
             </table>
           </div>
         </div>
@@ -69,6 +58,32 @@
         </div>
       </div>
 
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-head">
+          <h3>จัดการสมาชิก</h3>
+          <span class="small">แก้ไขอีเมลของสมาชิกในทีม</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>ชื่อ</th><th>Role</th><th>ทีม</th><th>อีเมล</th><th></th></tr></thead>
+            <tbody id="membersBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h3>คะแนนพิเศษ — เคสที่รับ/ปิดในวันหยุด</h3>
+          <span class="small">ให้คะแนนเพิ่มเติมโดยหัวหน้างาน สำหรับเจ้าหน้าที่ที่รับเคสในวันหยุด</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>เจ้าหน้าที่</th><th>เคสที่รับ/ปิดในวันหยุด</th><th>คะแนนพิเศษที่ให้</th><th></th></tr></thead>
+            <tbody id="holidayBonusBody"></tbody>
+          </table>
+        </div>
+      </div>
+
     </div>
   </div>
 </div>
@@ -80,6 +95,14 @@
   if(u){
     setTopbarContext(`Role ปัจจุบัน: <span class="badge badge-role">${u.roleLabel}</span>`);
 
+    document.getElementById("kpiCards").innerHTML = Object.values(MOCK_KPIS).map(k => `
+      <div class="card kpi">
+        <div class="label">${k.label} <span class="small" style="font-weight:400;">(${k.abbr})</span></div>
+        <div class="value">${k.value}</div>
+        <div class="target">${k.target}</div>
+      </div>
+    `).join("");
+
     const max = Math.max(...MOCK_MONTHLY.map(x=>x.v));
     document.getElementById("monthlyChart2").innerHTML = MOCK_MONTHLY.map(x => `
       <div style="flex:1; display:flex; flex-direction:column; align-items:center;">
@@ -90,9 +113,53 @@
       </div>
     `).join("");
 
+    document.getElementById("csatByProduct").innerHTML = PRODUCT_CATALOG.map((p,i) => {
+      const scores = [4.8,4.5,4.4,4.7,4.3,4.6,4.9,4.2,4.5];
+      const reviews = [42,30,28,19,15,22,11,9,17];
+      return `<tr><td>${p.team}</td><td>${p.product}</td><td>${scores[i % scores.length]} / 5</td><td>${reviews[i % reviews.length]}</td></tr>`;
+    }).join("");
+
     document.getElementById("auditBody").innerHTML = MOCK_AUDIT.map(a => `
       <tr><td class="mono">${a.time}</td><td>${a.user}</td><td>${a.action}</td></tr>
     `).join("");
+
+    document.getElementById("membersBody").innerHTML = MOCK_MEMBERS.map((m,i) => `
+      <tr>
+        <td>${m.name}</td>
+        <td><span class="badge badge-role">${m.role}</span></td>
+        <td>${m.team}</td>
+        <td><input class="input" style="width:220px;" value="${m.email}" id="memberEmail${i}"></td>
+        <td><button class="btn btn-sm" onclick="saveMemberEmail(${i})">บันทึก</button></td>
+      </tr>
+    `).join("");
+
+    document.getElementById("holidayBonusBody").innerHTML = MOCK_HOLIDAY_BONUS.map((h,i) => `
+      <tr>
+        <td>${h.name}</td>
+        <td>${h.holidayCases} เคส</td>
+        <td><input class="input" style="width:100px;" type="number" min="0" value="${h.bonusPoints}" id="bonusPoints${i}"></td>
+        <td><button class="btn btn-sm" onclick="saveBonus(${i})">บันทึก</button></td>
+      </tr>
+    `).join("");
+  }
+
+  function saveMemberEmail(i){
+    const val = document.getElementById("memberEmail"+i).value.trim();
+    MOCK_MEMBERS[i].email = val;
+    flashSaved(event.target);
+  }
+
+  function saveBonus(i){
+    const val = document.getElementById("bonusPoints"+i).value;
+    MOCK_HOLIDAY_BONUS[i].bonusPoints = Number(val);
+    flashSaved(event.target);
+  }
+
+  function flashSaved(btn){
+    const original = btn.textContent;
+    btn.textContent = "บันทึกแล้ว ✓";
+    btn.disabled = true;
+    setTimeout(() => { btn.textContent = original; btn.disabled = false; }, 1200);
   }
 </script>
 </body>

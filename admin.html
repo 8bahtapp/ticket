@@ -46,7 +46,7 @@
 
     content.innerHTML = `
       <div class="content-header">
-        <div><h1>ตั้งค่าระบบ (Admin Settings)</h1><p class="subtitle">ตั้งเวลาทำการ วันหยุด และดูรายงานค่าตอบแทนนอกเวลา — ทำได้เองโดยไม่ต้องผ่าน Dev</p></div>
+        <div><h1>ตั้งค่าระบบ (Admin Settings)</h1><p class="subtitle">ตั้งเวลาทำการ วันหยุด และเป้าหมายของแต่ละทีม — ทำได้เองโดยไม่ต้องผ่าน Dev</p></div>
       </div>
 
       <div class="grid grid-2" style="margin-bottom:16px; align-items:start;">
@@ -91,15 +91,23 @@
       </div>
 
       <div class="card" style="margin-bottom:16px;">
-        <div class="card-head"><h3>Off-Hours / OT Tracking</h3><span class="small">คำนวณจาก Timestamp การ Accept/ตอบเคสนอกเวลาทำการ</span></div>
+        <div class="card-head">
+          <h3>ตั้งค่าเป้าหมาย (Target) รายทีม</h3>
+          <span class="small">ปรับเป้าหมายของแต่ละตัวชี้วัดแยกตามทีมได้เอง</span>
+        </div>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>เจ้าหน้าที่</th><th>เคสนอกเวลา (เดือนนี้)</th><th>ชั่วโมง OT สะสม</th><th>Weight คะแนน</th><th>ค่าตอบแทนพิเศษประมาณ</th></tr></thead>
-            <tbody>
-              <tr><td>ธีรภัทร</td><td>6 เคส</td><td>4.5 ชม.</td><td>×1.5</td><td>฿ 1,350</td></tr>
-              <tr><td>พิมพ์ชนก</td><td>2 เคส</td><td>1.2 ชม.</td><td>×1.5</td><td>฿ 360</td></tr>
-              <tr><td>ณัฐพล</td><td>9 เคส</td><td>6.8 ชม.</td><td>×1.5</td><td>฿ 2,040</td></tr>
-            </tbody>
+            <thead>
+              <tr>
+                <th>ทีม</th>
+                <th>เป้าหมายเวลาตอบกลับครั้งแรก (นาที)</th>
+                <th>เป้าหมายเวลาเฉลี่ยแก้ปัญหา (นาที)</th>
+                <th>เป้าหมายอัตราเกินเวลาที่กำหนด (%)</th>
+                <th>เป้าหมายคะแนนความพึงพอใจ (จาก 5)</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="targetsBody"></tbody>
           </table>
         </div>
       </div>
@@ -108,11 +116,11 @@
         <div class="card-head"><h3>Role & Permission Management</h3></div>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Role</th><th>มองเห็นเคส</th><th>ข้อมูลลับลูกค้า (สัญญา/มูลค่า)</th><th>รายงาน Analytics</th><th>ตั้งค่าระบบ</th></tr></thead>
+            <thead><tr><th>Role</th><th>มองเห็นเคส</th><th>รายงาน Analytics</th><th>จัดการสมาชิก/อีเมล</th><th>ตั้งค่าระบบ</th></tr></thead>
             <tbody>
-              <tr><td><span class="badge badge-role">Admin</span></td><td>ทุกทีม</td><td>เห็น</td><td>เห็น</td><td>แก้ไขได้</td></tr>
-              <tr><td><span class="badge badge-role">Supervisor</span></td><td>เฉพาะทีมตัวเอง</td><td>เห็น</td><td>เห็น</td><td>ดูอย่างเดียว</td></tr>
-              <tr><td><span class="badge badge-role">Agent</span></td><td>เฉพาะเคสในทีมตัวเอง</td><td>ซ่อน — เห็นเฉพาะชื่อบริษัท/สิทธิ์สินค้า</td><td>ไม่แสดง</td><td>ไม่แสดง</td></tr>
+              <tr><td><span class="badge badge-role">Admin</span></td><td>ทุกทีม</td><td>เห็น</td><td>แก้ไขได้</td><td>แก้ไขได้</td></tr>
+              <tr><td><span class="badge badge-role">Supervisor</span></td><td>เฉพาะทีมตัวเอง</td><td>เห็น</td><td>แก้ไขได้ (เฉพาะทีมตัวเอง)</td><td>ดูอย่างเดียว</td></tr>
+              <tr><td><span class="badge badge-role">Agent</span></td><td>เฉพาะเคสในทีมตัวเอง</td><td>ไม่แสดง</td><td>ไม่แสดง</td><td>ไม่แสดง</td></tr>
             </tbody>
           </table>
         </div>
@@ -130,6 +138,30 @@
       calHtml += `<div class="cal-cell ${isHoliday?'holiday':''} ${isToday?'today':''}">${d}</div>`;
     }
     document.getElementById("calGrid").innerHTML = calHtml;
+
+    // per-team target settings
+    document.getElementById("targetsBody").innerHTML = MOCK_TEAM_TARGETS.map((t,i) => `
+      <tr>
+        <td><strong>${t.label}</strong></td>
+        <td><input class="input" style="width:90px;" type="number" min="0" value="${t.frtTarget}" id="frt${i}"></td>
+        <td><input class="input" style="width:90px;" type="number" min="0" value="${t.mttrTarget}" id="mttr${i}"></td>
+        <td><input class="input" style="width:90px;" type="number" min="0" value="${t.slaTarget}" id="sla${i}"></td>
+        <td><input class="input" style="width:90px;" type="number" min="0" max="5" step="0.1" value="${t.csatTarget}" id="csat${i}"></td>
+        <td><button class="btn btn-sm" onclick="saveTeamTarget(${i})">บันทึก</button></td>
+      </tr>
+    `).join("");
+  }
+
+  function saveTeamTarget(i){
+    MOCK_TEAM_TARGETS[i].frtTarget = Number(document.getElementById("frt"+i).value);
+    MOCK_TEAM_TARGETS[i].mttrTarget = Number(document.getElementById("mttr"+i).value);
+    MOCK_TEAM_TARGETS[i].slaTarget = Number(document.getElementById("sla"+i).value);
+    MOCK_TEAM_TARGETS[i].csatTarget = Number(document.getElementById("csat"+i).value);
+    const btn = event.target;
+    const original = btn.textContent;
+    btn.textContent = "บันทึกแล้ว ✓";
+    btn.disabled = true;
+    setTimeout(() => { btn.textContent = original; btn.disabled = false; }, 1200);
   }
 </script>
 </body>

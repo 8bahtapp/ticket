@@ -23,14 +23,17 @@
         <div class="queue-search">
           <div class="search">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
-            <input class="input" style="width:100%;" placeholder="ค้นหาเคส / บริษัท...">
+            <input class="input" style="width:100%;" id="searchInput" placeholder="ค้นหาบริษัท / อีเมล / เบอร์โทร / note...">
           </div>
         </div>
-        <div class="queue-tabs">
+        <div class="queue-tabs" id="queueTabs">
           <div class="queue-tab active" data-filter="all">ทั้งหมด</div>
           <div class="queue-tab" data-filter="new">ใหม่</div>
+          <div class="queue-tab" data-filter="in_progress">กำลังดำเนินการ</div>
           <div class="queue-tab" data-filter="pending">รอดำเนินการ</div>
           <div class="queue-tab" data-filter="breach">เกิน SLA</div>
+          <div class="queue-tab" data-filter="closed">ปิดเคส</div>
+          <div class="queue-tab" data-filter="cancel">ยกเลิก</div>
         </div>
         <div id="queueList"></div>
       </div>
@@ -47,8 +50,9 @@
           <div class="chat-header-actions">
             <select class="select" id="statusSelect">
               <option value="new">ใหม่</option>
+              <option value="in_progress">กำลังดำเนินการ</option>
               <option value="pending">รอดำเนินการ</option>
-              <option value="resolved">แก้ไขแล้ว</option>
+              <option value="cancel">ยกเลิก</option>
               <option value="closed">ปิดเคส</option>
             </select>
             <button class="btn btn-sm">ส่งต่อทีมอื่น</button>
@@ -82,6 +86,7 @@
   let currentMode = "customer";
   let activeTicket = null;
   let visibleTickets = [];
+  let currentTabFilter = "all";
 
   if(u){
     setTopbarContext(`Role ปัจจุบัน: <span class="badge badge-role">${u.roleLabel}</span>`);
@@ -89,50 +94,84 @@
     visibleTickets = u.role === "admin" ? MOCK_TICKETS
       : (u.role === "supervisor" ? MOCK_TICKETS : MOCK_TICKETS.filter(t => t.team === u.team));
 
-    renderQueue(visibleTickets);
+    applyFiltersAndRender();
 
     const params = new URLSearchParams(window.location.search);
     const wantedId = params.get("id");
-    const initial = visibleTickets.find(t => t.id === wantedId) || visibleTickets[0];
+    const initialList = getFilteredList();
+    const initial = initialList.find(t => t.id === wantedId) || initialList[0];
     if(initial) openTicket(initial.id);
 
     document.querySelectorAll(".queue-tab").forEach(tab => {
       tab.addEventListener("click", () => {
         document.querySelectorAll(".queue-tab").forEach(t=>t.classList.remove("active"));
         tab.classList.add("active");
-        const f = tab.dataset.filter;
-        const filtered = f === "all" ? visibleTickets : visibleTickets.filter(t => t.status === f);
-        renderQueue(filtered);
+        currentTabFilter = tab.dataset.filter;
+        applyFiltersAndRender();
       });
     });
+
+    document.getElementById("searchInput").addEventListener("input", applyFiltersAndRender);
+
+    document.getElementById("statusSelect").addEventListener("change", handleStatusChange);
+  }
+
+  function getFilteredList(){
+    let list = visibleTickets;
+    if(currentTabFilter === "breach"){
+      list = list.filter(t => t.breach);
+    } else if(currentTabFilter !== "all"){
+      list = list.filter(t => t.status === currentTabFilter);
+    }
+    const q = (document.getElementById("searchInput")?.value || "").trim().toLowerCase();
+    if(q){
+      list = list.filter(t => {
+        const inNotes = t.log.some(m => (m.text||"").toLowerCase().includes(q));
+        return t.company.toLowerCase().includes(q)
+          || (t.email||"").toLowerCase().includes(q)
+          || (t.phone||"").toLowerCase().includes(q)
+          || t.id.toLowerCase().includes(q)
+          || inNotes;
+      });
+    }
+    return list;
+  }
+
+  function applyFiltersAndRender(){
+    renderQueue(getFilteredList());
   }
 
   function renderQueue(list){
     document.getElementById("queueList").innerHTML = list.map(t => `
-      <div class="ticket-item ${t.status === 'breach' ? 'breach' : (t.status==='new'?'new':(t.status==='pending'?'pending':''))} ${activeTicket && activeTicket.id===t.id ? 'selected':''}" onclick="openTicket('${t.id}')">
+      <div class="ticket-item ${t.breach ? 'breach' : (t.status==='new'?'new':(t.status==='pending'?'pending':''))} ${activeTicket && activeTicket.id===t.id ? 'selected':''}" onclick="openTicket('${t.id}')">
         <div class="ticket-item-top">
           <span class="ticket-id mono">${t.id}</span>
-          ${statusBadge(t.status)}
+          <span class="flex gap-6">${statusBadge(t.status)}${breachBadge(t)}</span>
         </div>
         <div class="ticket-company">${t.company}</div>
         <div class="ticket-preview">${t.preview}</div>
         <div class="ticket-meta-row">
-          <span class="small">${t.channel} · ${t.team}</span>
+          <span class="small">${t.channel} · ${t.team} / ${t.product}</span>
           <span class="ticket-time">${t.time}</span>
         </div>
       </div>
-    `).join("") || `<div class="empty">ไม่มีเคสในหมวดนี้</div>`;
+    `).join("") || `<div class="empty">ไม่พบเคสที่ตรงกับเงื่อนไข</div>`;
   }
 
   function openTicket(id){
     activeTicket = MOCK_TICKETS.find(t => t.id === id);
     if(!activeTicket) return;
-    renderQueue(document.querySelector(".queue-tab.active")?.dataset.filter === "all" || !document.querySelector(".queue-tab.active") ? visibleTickets : visibleTickets.filter(t=>t.status===document.querySelector(".queue-tab.active").dataset.filter));
+    renderQueue(getFilteredList());
 
     document.getElementById("chatCompany").textContent = activeTicket.company;
     document.getElementById("chatTicketId").textContent = activeTicket.id + " · " + activeTicket.channel;
-    document.getElementById("statusSelect").value = activeTicket.status === "breach" ? "pending" : activeTicket.status;
+    document.getElementById("statusSelect").value = activeTicket.status;
 
+    renderChatBody();
+    renderRightPanel();
+  }
+
+  function renderChatBody(){
     document.getElementById("chatBody").innerHTML = activeTicket.log.map(m => {
       if(m.type === "system") return `<div class="msg system">${m.text} · ${m.time}</div>`;
       if(m.type === "customer") return `<div class="msg customer">${m.text}<div class="msg-meta">ลูกค้า · ${m.time}</div></div>`;
@@ -140,41 +179,110 @@
       return `<div class="msg agent">${m.text}<div class="msg-meta">${m.who} · ${m.time}</div></div>`;
     }).join("");
     document.getElementById("chatBody").scrollTop = 999999;
-
-    renderRightPanel();
   }
 
   function renderRightPanel(){
     const t = activeTicket;
-    const canSeeSensitive = u.role === "admin" || u.role === "supervisor";
     document.getElementById("rightPanel").innerHTML = `
       <div class="side-block">
         <h4>ข้อมูลลูกค้า</h4>
         <div class="info-row"><span class="k">บริษัท</span><span class="v">${t.company}</span></div>
-        <div class="info-row"><span class="k">ช่องทาง</span><span class="v">${t.channel}</span></div>
-        <div class="info-row ${canSeeSensitive ? '' : 'locked-row'}">
-          <span class="k">เลขผู้เสียภาษี</span>
-          <span class="v">${canSeeSensitive ? t.taxId : '<span class="tag-locked">'+ICONS.lock+' เห็นเฉพาะ Supervisor ขึ้นไป</span>'}</span>
-        </div>
-        <div class="info-row ${canSeeSensitive ? '' : 'locked-row'}">
-          <span class="k">มูลค่าสัญญา</span>
-          <span class="v">${canSeeSensitive ? '฿ 186,000 / ปี' : '<span class="tag-locked">'+ICONS.lock+' เห็นเฉพาะ Supervisor ขึ้นไป</span>'}</span>
-        </div>
+        <div class="info-row"><span class="k">ช่องทางที่แจ้งเคส</span><span class="v">${t.channel}</span></div>
+        <div class="info-row"><span class="k">อีเมล</span><span class="v">${t.email}</span></div>
+        <div class="info-row"><span class="k">เบอร์โทรศัพท์</span><span class="v">${t.phone}</span></div>
+        <div class="small" style="margin-top:6px; color:var(--text-mute);">ข้อมูลติดต่ออ้างอิงจากตอนที่เปิดเคส</div>
       </div>
       <div class="side-block">
-        <h4>สิทธิ์สินค้า (License)</h4>
-        <div class="chip-list">${t.licenses.map(l=>`<span class="chip">${l}</span>`).join("")}</div>
+        <h4>ทีม / สินค้าที่เกี่ยวข้อง</h4>
+        <div class="chip-list">
+          <span class="chip">ทีม ${t.team}</span>
+          <span class="chip">${t.product}</span>
+        </div>
       </div>
       <div class="side-block">
         <h4>Sub-tasks / ทีมที่เกี่ยวข้อง</h4>
-        <div class="small" style="margin-bottom:8px;">${t.team} — ${t.assignee}</div>
-        <button class="btn btn-sm" style="width:100%;">+ เพิ่ม Co-assignee ทีมอื่น</button>
+        <div class="info-row"><span class="k">ผู้รับผิดชอบเคส</span><span class="v">${t.assignee}</span></div>
+        <div class="info-row"><span class="k">เซลที่ดูแลบัญชี</span><span class="v">${t.sales}</span></div>
+        <button class="btn btn-sm" style="width:100%; margin-top:8px;">+ เพิ่ม Co-assignee ทีมอื่น</button>
       </div>
+      ${t.pendingReason ? `<div class="side-block"><h4>เหตุผลที่รอดำเนินการ</h4><div class="small">${t.pendingReason}</div></div>` : ""}
+      ${t.cancelReason ? `<div class="side-block"><h4>เหตุผลที่ยกเลิก</h4><div class="small">${t.cancelReason}</div></div>` : ""}
+      ${t.closeSummary ? `<div class="side-block"><h4>สรุปการปิดเคส</h4><div class="small">${t.closeSummary}</div></div>` : ""}
       <div class="side-block">
         <h4>Audit Log (อ่านอย่างเดียว)</h4>
         ${t.log.map(m => `<div class="small" style="margin-bottom:6px;">${m.time} — ${m.who || 'ระบบ'}: ${m.type === 'internal' ? 'เพิ่ม Internal Note' : (m.type==='agent' ? 'ตอบลูกค้า' : (m.type==='customer' ? 'ลูกค้าส่งข้อความ' : m.text))}</div>`).join("")}
       </div>
     `;
+  }
+
+  function handleStatusChange(e){
+    const newStatus = e.target.value;
+    const prevStatus = activeTicket.status;
+    if(newStatus === prevStatus) return;
+
+    if(newStatus === "pending"){
+      openReasonModal({
+        title:"เปลี่ยนสถานะเป็น รอดำเนินการ",
+        description:"กรุณาระบุเหตุผลที่เคสนี้ต้องรอดำเนินการ (จะถูกบันทึกใน Audit Log)",
+        placeholder:"เช่น รอลูกค้ายืนยันข้อมูล / รอชิ้นส่วนอะไหล่ ฯลฯ",
+        confirmLabel:"บันทึกและเปลี่ยนสถานะ",
+        onConfirm:(text) => {
+          activeTicket.status = "pending";
+          activeTicket.pendingReason = text;
+          activeTicket.log.push({type:"system", text:`เปลี่ยนสถานะเป็น รอดำเนินการ — เหตุผล: ${text}`, time:nowLabel()});
+          refreshAfterStatusChange();
+        }
+      });
+    } else if(newStatus === "cancel"){
+      openReasonModal({
+        title:"ยกเลิกเคส",
+        description:"กรุณาระบุเหตุผลการยกเลิกเคสนี้ (จะถูกบันทึกใน Audit Log)",
+        placeholder:"เช่น ลูกค้าแก้ปัญหาได้เอง / แจ้งซ้ำ ฯลฯ",
+        confirmLabel:"ยืนยันยกเลิกเคส",
+        onConfirm:(text) => {
+          activeTicket.status = "cancel";
+          activeTicket.cancelReason = text;
+          activeTicket.log.push({type:"system", text:`ยกเลิกเคส — เหตุผล: ${text}`, time:nowLabel()});
+          refreshAfterStatusChange();
+        }
+      });
+    } else if(newStatus === "closed"){
+      openReasonModal({
+        title:"ปิดเคส",
+        description:`สรุปนี้จะถูกส่งให้ลูกค้า (${activeTicket.email}) และเซลที่ดูแลบัญชี (${activeTicket.sales}) โดยอัตโนมัติ`,
+        placeholder:"สรุปอาการ สาเหตุ และวิธีแก้ไขที่ทำให้กับลูกค้า...",
+        confirmLabel:"ยืนยันปิดเคสและส่งสรุป",
+        onConfirm:(text) => {
+          activeTicket.status = "closed";
+          activeTicket.closeSummary = text;
+          activeTicket.log.push({type:"system", text:`ปิดเคส — สรุป: ${text}`, time:nowLabel()});
+          activeTicket.log.push({type:"system", text:`ส่งสรุปเคสให้ลูกค้าทางอีเมลและแจ้งเซลที่ดูแลบัญชีเรียบร้อยแล้ว`, time:nowLabel()});
+          refreshAfterStatusChange();
+        }
+      });
+    } else {
+      // new / in_progress — no confirmation needed
+      activeTicket.status = newStatus;
+      activeTicket.log.push({type:"system", text:`เปลี่ยนสถานะเป็น ${STATUS_META[newStatus].label}`, time:nowLabel()});
+      refreshAfterStatusChange();
+    }
+
+    // if the modal gets dismissed without confirming, revert the dropdown
+    setTimeout(() => {
+      if(!document.getElementById("modalOverlay")) return;
+      document.getElementById("statusSelect").value = prevStatus;
+    }, 0);
+  }
+
+  function refreshAfterStatusChange(){
+    document.getElementById("statusSelect").value = activeTicket.status;
+    renderChatBody();
+    renderRightPanel();
+    applyFiltersAndRender();
+  }
+
+  function nowLabel(){
+    return new Date().toLocaleTimeString("th-TH", {hour:'2-digit', minute:'2-digit'});
   }
 
   function setMode(mode){
@@ -205,14 +313,15 @@
   function sendMessage(){
     const input = document.getElementById("composerInput");
     if(!input.value.trim() || !activeTicket) return;
-    const now = new Date().toLocaleTimeString("th-TH", {hour:'2-digit', minute:'2-digit'});
+    const now = nowLabel();
     if(currentMode === "customer"){
       activeTicket.log.push({type:"agent", who:u.name, text:input.value.trim(), time:now});
     } else {
       activeTicket.log.push({type:"internal", who:u.name, text:input.value.trim(), time:now});
     }
     input.value = "";
-    openTicket(activeTicket.id);
+    renderChatBody();
+    renderRightPanel();
   }
 </script>
 </body>
