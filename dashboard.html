@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ภาพรวม · 8Baht Support Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="app">
+  <aside class="sidebar" id="sidebar-slot"></aside>
+
+  <div class="main">
+    <div class="topbar" id="topbar-slot"></div>
+
+    <div class="content">
+      <div class="content-header">
+        <div>
+          <h1 id="pageTitle">ภาพรวม</h1>
+          <p class="subtitle" id="pageSub">สรุปสถานะเคสและ SLA ประจำวันนี้</p>
+        </div>
+        <div class="filters">
+          <select class="select">
+            <option>วันนี้</option>
+            <option>7 วันล่าสุด</option>
+            <option>เดือนนี้</option>
+          </select>
+          <button class="btn">Export CSV</button>
+        </div>
+      </div>
+
+      <div class="grid grid-4" style="margin-bottom:16px;">
+        <div class="card kpi">
+          <div class="label">FRT — First Response Time</div>
+          <div class="value">3.2 นาที</div>
+          <div class="flex between">
+            <span class="delta delta-up">▼ 8% จากเดือนก่อน</span>
+          </div>
+          <div class="target">เป้าหมาย &lt; 5 นาที</div>
+        </div>
+        <div class="card kpi">
+          <div class="label">MTTR — Mean Time to Resolution</div>
+          <div class="value">41 นาที</div>
+          <div class="flex between">
+            <span class="delta delta-up">▼ 3% จากเดือนก่อน</span>
+          </div>
+          <div class="target">เป้าหมาย &lt; 60 นาที</div>
+        </div>
+        <div class="card kpi">
+          <div class="label">SLA Breach Rate</div>
+          <div class="value">6.4%</div>
+          <div class="flex between">
+            <span class="delta delta-down">▲ 1.2% จากเดือนก่อน</span>
+          </div>
+          <div class="target">เป้าหมาย &lt; 5%</div>
+        </div>
+        <div class="card kpi">
+          <div class="label">CSAT Score</div>
+          <div class="value">4.6 / 5</div>
+          <div class="flex between">
+            <span class="delta delta-up">▲ 0.1 จากเดือนก่อน</span>
+          </div>
+          <div class="target">จาก 312 แบบประเมิน</div>
+        </div>
+      </div>
+
+      <div class="grid grid-2" style="margin-bottom:16px; align-items:start;">
+        <div class="card">
+          <div class="card-head">
+            <h3>เคสรายเดือน (ย้อนหลัง 7 เดือน)</h3>
+            <span class="small">รวมทุกช่องทาง</span>
+          </div>
+          <div class="card-pad">
+            <div class="chart-placeholder" id="monthlyChart"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h3>ภาระงานแยกตามทีม</h3>
+            <span class="small">เคสที่เปิดอยู่ตอนนี้</span>
+          </div>
+          <div class="card-pad" id="teamLoad"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h3>เคสล่าสุด</h3>
+          <a href="tickets.html">ดูทั้งหมด →</a>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Ticket ID</th><th>บริษัท</th><th>สถานะ</th><th>ทีม</th><th>ผู้รับผิดชอบ</th><th>ช่องทาง</th><th>รอมาแล้ว</th></tr>
+            </thead>
+            <tbody id="recentTickets"></tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script src="js/data.js"></script>
+<script src="js/app.js"></script>
+<script>
+  const u = renderShell("dashboard");
+  if(u){
+    setTopbarContext(`Role ปัจจุบัน: <span class="badge badge-role">${u.roleLabel}</span> ${u.role !== "admin" ? "· มองเห็นเฉพาะ "+u.team : "· มองเห็นทุกทีม"}`);
+
+    // scope tickets by role, same logic reused on tickets.html
+    const visibleTickets = u.role === "admin" ? MOCK_TICKETS : MOCK_TICKETS.filter(t => t.team === u.team || u.role === "supervisor");
+
+    document.getElementById("recentTickets").innerHTML = visibleTickets.slice(0,5).map(t => `
+      <tr onclick="window.location.href='tickets.html?id=${t.id}'">
+        <td class="mono">${t.id}</td>
+        <td>${t.company}</td>
+        <td>${statusBadge(t.status)}</td>
+        <td>${t.team}</td>
+        <td>${t.assignee}</td>
+        <td>${t.channel}</td>
+        <td>${t.waiting}</td>
+      </tr>
+    `).join("");
+
+    // monthly bar chart (plain divs, no library)
+    const max = Math.max(...MOCK_MONTHLY.map(x=>x.v));
+    document.getElementById("monthlyChart").innerHTML = MOCK_MONTHLY.map(x => `
+      <div style="flex:1; display:flex; flex-direction:column; align-items:center;">
+        <div class="bar" style="height:180px; width:100%;">
+          <div class="bar-fill" style="height:${(x.v/max*100).toFixed(0)}%;"></div>
+        </div>
+        <div class="bar-label">${x.m}</div>
+      </div>
+    `).join("");
+
+    document.getElementById("teamLoad").innerHTML = MOCK_TEAM_LOAD.map(t => `
+      <div style="margin-bottom:12px;">
+        <div class="flex between" style="margin-bottom:4px; font-size:13px;">
+          <span>${t.team}</span>
+          <span class="small">${t.open} เคสเปิดอยู่ ${t.breach ? `· <span style="color:var(--st-breach); font-weight:700;">เกิน SLA ${t.breach}</span>` : ""}</span>
+        </div>
+        <div style="height:6px; background:var(--surface-2); border-radius:4px; overflow:hidden; border:1px solid var(--border);">
+          <div style="height:100%; width:${Math.min(t.open*5,100)}%; background:var(--accent);"></div>
+        </div>
+      </div>
+    `).join("");
+  }
+</script>
+</body>
+</html>

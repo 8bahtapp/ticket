@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>เข้าสู่ระบบ · 8Baht Support Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="login-wrap">
+  <div class="login-card">
+    <div class="login-brand"><span class="dot"></span><span>8Baht Support Console</span></div>
+    <div class="login-title">เข้าสู่ระบบหลังบ้าน</div>
+    <div class="login-sub">สำหรับเจ้าหน้าที่ซัพพอร์ตและผู้ดูแลระบบ</div>
+
+    <div class="login-role-note">
+      ⚠️ นี่คือหน้า Login จำลอง (mock) สำหรับทดสอบ concept — เลือก Role ด้านล่างเพื่อดูมุมมองของแต่ละสิทธิ์ ยังไม่มีการเชื่อมต่อระบบยืนยันตัวตนจริง
+    </div>
+
+    <form id="loginForm">
+      <div class="field">
+        <label for="role">เข้าสู่ระบบด้วยสิทธิ์ (จำลอง)</label>
+        <select id="role" required>
+          <option value="admin">Admin — เห็นภาพรวมทั้งหมด</option>
+          <option value="supervisor">Supervisor — เห็นเฉพาะทีมตัวเอง + รายงาน</option>
+          <option value="agent">Agent — เห็นเฉพาะเคสในทีมตัวเอง</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="username">ชื่อผู้ใช้</label>
+        <input id="username" type="text" placeholder="เช่น agent01" value="agent01">
+      </div>
+      <div class="field">
+        <label for="password">รหัสผ่าน</label>
+        <input id="password" type="password" placeholder="••••••••" value="password">
+      </div>
+      <button type="submit" class="btn btn-primary login-btn">เข้าสู่ระบบ</button>
+    </form>
+
+    <div class="login-foot">Demo build — ข้อมูลทั้งหมดเป็นข้อมูลจำลอง</div>
+  </div>
+</div>
+
+<script src="js/data.js"></script>
+<script>
+  document.getElementById("loginForm").addEventListener("submit", function(e){
+    e.preventDefault();
+    const role = document.getElementById("role").value;
+    localStorage.setItem("mock_role", role);
+    window.location.href = "dashboard.html";
+  });
+</script>
+</body>
+</html>
