@@ -36,7 +36,7 @@ function renderShell(activePage){
     { key:"dashboard", label:"ภาพรวม (Dashboard)", href:"dashboard.html", icon:ICONS.dashboard, roles:["admin","supervisor","agent"] },
     { key:"tickets",   label:"เคส & แชท", href:"tickets.html", icon:ICONS.tickets, roles:["admin","supervisor","agent"] },
     { key:"reports",   label:"รายงาน & Analytics", href:"reports.html", icon:ICONS.reports, roles:["admin","supervisor"] },
-    { key:"admin",     label:"ตั้งค่าระบบ (Admin)", href:"admin.html", icon:ICONS.admin, roles:["admin"] },
+    { key:"admin",     label:"ตั้งค่าระบบ", href:"admin.html", icon:ICONS.admin, roles:["admin","supervisor"] },
   ];
 
   const sidebar = document.getElementById("sidebar-slot");
@@ -134,5 +134,147 @@ function openReasonModal(opts){
     }
     closeModal();
     if(opts.onConfirm) opts.onConfirm(val);
+  });
+}
+
+/** Simple yes/no confirmation modal, no text input required.
+ * opts: { title, description, confirmLabel, danger, onConfirm } */
+function openConfirmModal(opts){
+  closeModal();
+  const overlay = document.createElement("div");
+  overlay.id = "modalOverlay";
+  overlay.className = "modal-overlay";
+  overlay.innerHTML = `
+    <div class="modal-card">
+      <h3>${opts.title}</h3>
+      ${opts.description ? `<p class="small" style="margin-bottom:6px;">${opts.description}</p>` : ""}
+      <div class="modal-actions">
+        <button class="btn" onclick="closeModal()">ยกเลิก</button>
+        <button class="btn ${opts.danger ? 'btn-danger' : 'btn-primary'}" id="modalConfirmBtn2">${opts.confirmLabel || 'ยืนยัน'}</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  overlay.addEventListener("click", (e) => { if(e.target === overlay) closeModal(); });
+  document.getElementById("modalConfirmBtn2").addEventListener("click", () => {
+    closeModal();
+    if(opts.onConfirm) opts.onConfirm();
+  });
+}
+
+/** Multi-field form modal (add member / add product / etc).
+ * opts: { title, description, fields:[{id,label,type:'text'|'email'|'select',options:[{value,label}],value,placeholder}],
+ *         confirmLabel, note, onConfirm(values) } */
+function openFormModal(opts){
+  closeModal();
+  const overlay = document.createElement("div");
+  overlay.id = "modalOverlay";
+  overlay.className = "modal-overlay";
+  const fieldsHtml = opts.fields.map(f => {
+    if(f.type === "select"){
+      return `<div class="form-row"><label>${f.label}</label>
+        <select id="ff_${f.id}">${f.options.map(o => `<option value="${o.value}" ${o.value===f.value?'selected':''}>${o.label}</option>`).join("")}</select>
+      </div>`;
+    }
+    return `<div class="form-row"><label>${f.label}</label>
+      <input id="ff_${f.id}" type="${f.type || 'text'}" value="${f.value || ''}" placeholder="${f.placeholder || ''}">
+    </div>`;
+  }).join("");
+
+  overlay.innerHTML = `
+    <div class="modal-card modal-card-lg">
+      <h3>${opts.title}</h3>
+      ${opts.description ? `<p class="small" style="margin-bottom:12px;">${opts.description}</p>` : ""}
+      ${fieldsHtml}
+      ${opts.note ? `<div class="modal-note">${opts.note}</div>` : ""}
+      <div class="modal-actions">
+        <button class="btn" onclick="closeModal()">ยกเลิก</button>
+        <button class="btn btn-primary" id="modalFormConfirmBtn">${opts.confirmLabel || 'บันทึก'}</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  overlay.addEventListener("click", (e) => { if(e.target === overlay) closeModal(); });
+
+  document.getElementById("modalFormConfirmBtn").addEventListener("click", () => {
+    const values = {};
+    opts.fields.forEach(f => { values[f.id] = document.getElementById("ff_"+f.id).value.trim(); });
+    closeModal();
+    if(opts.onConfirm) opts.onConfirm(values);
+  });
+}
+
+/* ---------------------------------------------------------- collapsible cards / side-blocks */
+function toggleCardBody(headerEl){
+  const body = headerEl.nextElementSibling;
+  if(body) body.classList.toggle("collapsed");
+  const chevron = headerEl.querySelector(".chevron");
+  if(chevron) chevron.classList.toggle("collapsed");
+}
+
+function toggleSideBlock(headerEl){
+  const block = headerEl.closest(".side-block");
+  if(block) block.classList.toggle("collapsed");
+  const chevron = headerEl.querySelector(".chevron");
+  if(chevron) chevron.classList.toggle("collapsed");
+}
+
+/* ---------------------------------------------------------- shared year-over-year trend chart */
+function renderTrendChart(containerId, rows){
+  const el = document.getElementById(containerId);
+  if(!el || !rows || !rows.length) return;
+  const maxVal = Math.max(...rows.map(d => Math.max(d.thisYear, d.lastYear)), 1);
+  const maxPx = 170;
+  el.innerHTML = rows.map(d => {
+    const hThis = Math.max(4, Math.round((d.thisYear / maxVal) * maxPx));
+    const hLast = Math.max(4, Math.round((d.lastYear / maxVal) * maxPx));
+    return `
+      <div class="trend-group">
+        <div class="trend-bars">
+          <div class="trend-bar this-year" style="height:${hThis}px;" title="ปีนี้ (${d.m}): ${d.thisYear}"></div>
+          <div class="trend-bar last-year" style="height:${hLast}px;" title="ปีก่อน (${d.m}): ${d.lastYear}"></div>
+        </div>
+        <div class="bar-label">${d.m}</div>
+      </div>`;
+  }).join("");
+}
+
+/** Wires a <select> of metric names to a trend chart container, using MOCK_TREND. */
+function setupTrendSection(selectId, containerId, defaultMetric){
+  const select = document.getElementById(selectId);
+  if(!select) return;
+  select.innerHTML = Object.keys(MOCK_TREND).map(k =>
+    `<option value="${k}" ${k === defaultMetric ? "selected" : ""}>${k}</option>`
+  ).join("");
+  const render = () => renderTrendChart(containerId, MOCK_TREND[select.value]);
+  select.addEventListener("change", render);
+  render();
+}
+
+/* ---------------------------------------------------------- resizable 3-column layout (tickets page) */
+function initColumnResize(handleId, layoutEl, cssVar, minWidth, maxWidth, grow){
+  const handle = document.getElementById(handleId);
+  if(!handle) return;
+  let dragging = false, startX = 0, startW = 0;
+
+  handle.addEventListener("mousedown", (e) => {
+    dragging = true;
+    handle.classList.add("dragging");
+    startX = e.clientX;
+    startW = parseInt(getComputedStyle(layoutEl).getPropertyValue(cssVar)) || 300;
+    document.body.style.userSelect = "none";
+  });
+  window.addEventListener("mousemove", (e) => {
+    if(!dragging) return;
+    const delta = grow === "right" ? (e.clientX - startX) : (startX - e.clientX);
+    let next = startW + delta;
+    next = Math.max(minWidth, Math.min(maxWidth, next));
+    layoutEl.style.setProperty(cssVar, next + "px");
+  });
+  window.addEventListener("mouseup", () => {
+    if(!dragging) return;
+    dragging = false;
+    handle.classList.remove("dragging");
+    document.body.style.userSelect = "";
   });
 }

@@ -20,11 +20,15 @@
       <div class="content-header">
         <div>
           <h1>รายงาน & Analytics</h1>
-          <p class="subtitle">เปรียบเทียบข้อมูลย้อนหลัง แยกตามทีม/สินค้า พร้อม Export</p>
+          <p class="subtitle">เปรียบเทียบข้อมูลย้อนหลัง แยกตามทีม/สินค้า/พนักงาน พร้อม Export</p>
         </div>
         <div class="filters">
-          <select class="select"><option>ทุกทีม</option><option>MIS</option><option>Ci2D</option><option>Ci3D</option><option>Ci8baht</option><option>MIH</option></select>
-          <select class="select"><option>7 เดือนล่าสุด</option><option>ปีนี้</option><option>ปีก่อน</option></select>
+          <select class="select" id="teamFilter"><option value="all">ทุกทีม</option><option>MIS</option><option>Ci2D</option><option>Ci3D</option><option>Ci8baht</option><option>MIH</option></select>
+          <span class="small">จาก</span>
+          <input class="input" type="date" id="dateFrom" value="2026-02-01">
+          <span class="small">ถึง</span>
+          <input class="input" type="date" id="dateTo" value="2026-08-05">
+          <button class="btn" onclick="applyDateFilter()">ใช้ตัวกรอง</button>
           <button class="btn btn-primary">Export CSV</button>
         </div>
       </div>
@@ -32,24 +36,63 @@
       <div class="grid grid-4" style="margin-bottom:16px;" id="kpiCards"></div>
 
       <div class="card" style="margin-bottom:16px;">
-        <div class="card-head"><h3>จำนวนเคสย้อนหลัง 7 เดือน</h3><span class="small">แยกตามเดือน</span></div>
-        <div class="card-pad"><div class="chart-placeholder" id="monthlyChart2"></div></div>
+        <div class="card-head collapsible" onclick="toggleCardBody(this)">
+          <h3>เปรียบเทียบรายเดือนกับปีที่แล้ว</h3>
+          <span class="chevron">▾</span>
+        </div>
+        <div class="card-body-collapsible card-pad">
+          <div class="flex between" style="margin-bottom:10px;">
+            <select class="select" id="trendMetricReports"></select>
+          </div>
+          <div class="trend-legend">
+            <span><span class="dot" style="background:var(--accent);"></span>ปีนี้</span>
+            <span><span class="dot" style="background:var(--border-strong);"></span>ปีก่อน</span>
+          </div>
+          <div class="trend-chart" id="trendChartReports"></div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-head collapsible" onclick="toggleCardBody(this)">
+          <h3>รายละเอียดแยกตามพนักงาน</h3>
+          <span class="chevron">▾</span>
+        </div>
+        <div class="card-body-collapsible table-wrap">
+          <table>
+            <thead><tr><th>เจ้าหน้าที่</th><th>ทีม</th><th>เคสที่รับ</th><th>เคสที่ปิดได้</th><th>เวลาตอบกลับครั้งแรกเฉลี่ย</th><th>คะแนนความพึงพอใจเฉลี่ย</th></tr></thead>
+            <tbody id="agentDetailBody"></tbody>
+          </table>
+        </div>
       </div>
 
       <div class="grid grid-2" style="margin-bottom:16px;">
         <div class="card">
-          <div class="card-head"><h3>คะแนนความพึงพอใจ แยกตามสินค้า</h3></div>
-          <div class="card-pad">
+          <div class="card-head collapsible" onclick="toggleCardBody(this)">
+            <h3>คะแนนความพึงพอใจ (เต็ม 10)</h3>
+            <span class="chevron">▾</span>
+          </div>
+          <div class="card-body-collapsible card-pad">
+            <div class="flex between" style="margin-bottom:10px;">
+              <span class="small">แยกตาม</span>
+              <select class="select" id="csatGroupBy">
+                <option value="สินค้า">สินค้า</option>
+                <option value="ทีม">ทีม</option>
+                <option value="เจ้าหน้าที่">เจ้าหน้าที่</option>
+              </select>
+            </div>
             <table>
-              <thead><tr><th>ทีม</th><th>สินค้า</th><th>CSAT</th><th>จำนวนรีวิว</th></tr></thead>
-              <tbody id="csatByProduct"></tbody>
+              <thead><tr><th id="csatColHead">สินค้า</th><th>คะแนน (/10)</th><th>จำนวนรีวิว</th></tr></thead>
+              <tbody id="csatBody"></tbody>
             </table>
           </div>
         </div>
 
         <div class="card">
-          <div class="card-head"><h3>System Audit Log</h3><span class="small">Read-only</span></div>
-          <div class="card-pad" style="max-height:280px; overflow-y:auto;">
+          <div class="card-head collapsible" onclick="toggleCardBody(this)">
+            <h3>System Audit Log</h3>
+            <span class="chevron">▾</span>
+          </div>
+          <div class="card-body-collapsible card-pad" style="max-height:320px; overflow-y:auto; resize:vertical; overflow-x:hidden;">
             <table>
               <thead><tr><th>เวลา</th><th>ผู้ใช้</th><th>การกระทำ</th></tr></thead>
               <tbody id="auditBody"></tbody>
@@ -59,9 +102,22 @@
       </div>
 
       <div class="card" style="margin-bottom:16px;">
+        <div class="card-head collapsible" onclick="toggleCardBody(this)">
+          <h3>เคสที่รับ/ปิดในวันหยุด</h3>
+          <span class="chevron">▾</span>
+        </div>
+        <div class="card-body-collapsible table-wrap">
+          <table>
+            <thead><tr><th>Ticket ID</th><th>บริษัท</th><th>เจ้าหน้าที่ที่ทำเคส</th><th>วันที่</th><th>สถานะ</th></tr></thead>
+            <tbody id="holidayCasesBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
         <div class="card-head">
           <h3>จัดการสมาชิก</h3>
-          <span class="small">แก้ไขอีเมลของสมาชิกในทีม</span>
+          <button class="btn btn-sm btn-primary" onclick="openAddMemberModal()">+ เพิ่มสมาชิก</button>
         </div>
         <div class="table-wrap">
           <table>
@@ -69,19 +125,7 @@
             <tbody id="membersBody"></tbody>
           </table>
         </div>
-      </div>
-
-      <div class="card">
-        <div class="card-head">
-          <h3>คะแนนพิเศษ — เคสที่รับ/ปิดในวันหยุด</h3>
-          <span class="small">ให้คะแนนเพิ่มเติมโดยหัวหน้างาน สำหรับเจ้าหน้าที่ที่รับเคสในวันหยุด</span>
-        </div>
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>เจ้าหน้าที่</th><th>เคสที่รับ/ปิดในวันหยุด</th><th>คะแนนพิเศษที่ให้</th><th></th></tr></thead>
-            <tbody id="holidayBonusBody"></tbody>
-          </table>
-        </div>
+        <div class="card-pad small" style="color:var(--text-mute); border-top:1px solid var(--border);">การเพิ่ม/ลบสมาชิกจะส่งอีเมลแจ้งเตือนไปยังสมาชิกที่เกี่ยวข้องโดยอัตโนมัติ (จำลองในเดโมนี้)</div>
       </div>
 
     </div>
@@ -92,6 +136,7 @@
 <script src="js/app.js"></script>
 <script>
   const u = renderShell("reports");
+
   if(u){
     setTopbarContext(`Role ปัจจุบัน: <span class="badge badge-role">${u.roleLabel}</span>`);
 
@@ -103,63 +148,115 @@
       </div>
     `).join("");
 
-    const max = Math.max(...MOCK_MONTHLY.map(x=>x.v));
-    document.getElementById("monthlyChart2").innerHTML = MOCK_MONTHLY.map(x => `
-      <div style="flex:1; display:flex; flex-direction:column; align-items:center;">
-        <div class="bar" style="height:200px; width:100%;">
-          <div class="bar-fill" style="height:${(x.v/max*100).toFixed(0)}%;"></div>
-        </div>
-        <div class="bar-label">${x.m}</div>
-      </div>
+    setupTrendSection("trendMetricReports", "trendChartReports", "จำนวนเคส");
+
+    renderAgentDetail();
+    renderCsat();
+    renderAudit();
+    renderHolidayCases();
+    renderMembers();
+
+    document.getElementById("teamFilter").addEventListener("change", () => { renderAgentDetail(); renderHolidayCases(); });
+    document.getElementById("csatGroupBy").addEventListener("change", renderCsat);
+  }
+
+  function scopedTeam(){
+    const val = document.getElementById("teamFilter").value;
+    return val === "all" ? null : val;
+  }
+
+  function renderAgentDetail(){
+    const team = scopedTeam();
+    let rows = MOCK_AGENT_DETAIL;
+    if(u.role !== "admin") rows = rows.filter(r => r.team === u.team);
+    if(team) rows = rows.filter(r => r.team === team);
+    document.getElementById("agentDetailBody").innerHTML = rows.map(r => `
+      <tr><td>${r.name}</td><td>${r.team}</td><td>${r.handled}</td><td>${r.closed}</td><td>${r.frt}</td><td>${r.csat}</td></tr>
+    `).join("") || `<tr><td colspan="6" class="empty">ไม่มีข้อมูลในเงื่อนไขนี้</td></tr>`;
+  }
+
+  function renderCsat(){
+    const groupBy = document.getElementById("csatGroupBy").value;
+    document.getElementById("csatColHead").textContent = groupBy;
+    document.getElementById("csatBody").innerHTML = MOCK_CSAT_BREAKDOWN[groupBy].map(r => `
+      <tr><td>${r.label}</td><td>${r.score.toFixed(1)} / 10</td><td>${r.reviews}</td></tr>
     `).join("");
+  }
 
-    document.getElementById("csatByProduct").innerHTML = PRODUCT_CATALOG.map((p,i) => {
-      const scores = [4.8,4.5,4.4,4.7,4.3,4.6,4.9,4.2,4.5];
-      const reviews = [42,30,28,19,15,22,11,9,17];
-      return `<tr><td>${p.team}</td><td>${p.product}</td><td>${scores[i % scores.length]} / 5</td><td>${reviews[i % reviews.length]}</td></tr>`;
-    }).join("");
-
+  function renderAudit(){
     document.getElementById("auditBody").innerHTML = MOCK_AUDIT.map(a => `
       <tr><td class="mono">${a.time}</td><td>${a.user}</td><td>${a.action}</td></tr>
     `).join("");
+  }
 
-    document.getElementById("membersBody").innerHTML = MOCK_MEMBERS.map((m,i) => `
+  function renderHolidayCases(){
+    const team = scopedTeam();
+    let rows = MOCK_TICKETS.filter(t => t.isHoliday);
+    if(u.role !== "admin") rows = rows.filter(t => t.team === u.team);
+    if(team) rows = rows.filter(t => t.team === team);
+    document.getElementById("holidayCasesBody").innerHTML = rows.map(t => `
+      <tr onclick="window.location.href='tickets.html?id=${t.id}'">
+        <td class="mono">${t.id}</td>
+        <td>${t.company}</td>
+        <td>${t.assignee}</td>
+        <td>${t.date}</td>
+        <td><span class="badge badge-holiday"><span class="badge-dot"></span>เคสวันหยุด</span> ${statusBadge(t.status)}</td>
+      </tr>
+    `).join("") || `<tr><td colspan="5" class="empty">ไม่มีเคสที่ทำในวันหยุดตามเงื่อนไขนี้</td></tr>`;
+  }
+
+  function renderMembers(){
+    document.getElementById("membersBody").innerHTML = MOCK_MEMBERS.map(m => `
       <tr>
         <td>${m.name}</td>
         <td><span class="badge badge-role">${m.role}</span></td>
         <td>${m.team}</td>
-        <td><input class="input" style="width:220px;" value="${m.email}" id="memberEmail${i}"></td>
-        <td><button class="btn btn-sm" onclick="saveMemberEmail(${i})">บันทึก</button></td>
-      </tr>
-    `).join("");
-
-    document.getElementById("holidayBonusBody").innerHTML = MOCK_HOLIDAY_BONUS.map((h,i) => `
-      <tr>
-        <td>${h.name}</td>
-        <td>${h.holidayCases} เคส</td>
-        <td><input class="input" style="width:100px;" type="number" min="0" value="${h.bonusPoints}" id="bonusPoints${i}"></td>
-        <td><button class="btn btn-sm" onclick="saveBonus(${i})">บันทึก</button></td>
+        <td>${m.email}</td>
+        <td><button class="btn btn-sm btn-danger" onclick="confirmRemoveMember('${m.id}')">ลบ</button></td>
       </tr>
     `).join("");
   }
 
-  function saveMemberEmail(i){
-    const val = document.getElementById("memberEmail"+i).value.trim();
-    MOCK_MEMBERS[i].email = val;
-    flashSaved(event.target);
+  function openAddMemberModal(){
+    openFormModal({
+      title:"เพิ่มสมาชิกใหม่",
+      description:"กรอกข้อมูลสมาชิกที่ต้องการเพิ่มเข้าทีม",
+      fields:[
+        { id:"name", label:"ชื่อ", type:"text", placeholder:"เช่น คุณสมชาย" },
+        { id:"role", label:"Role", type:"select", options:[{value:"Agent",label:"Agent"},{value:"Supervisor",label:"Supervisor"},{value:"Admin",label:"Admin"}] },
+        { id:"team", label:"ทีม", type:"select", options:TEAMS.map(t => ({value:t.code, label:t.label})) },
+        { id:"email", label:"อีเมล", type:"email", placeholder:"name@8baht.com" },
+      ],
+      confirmLabel:"เพิ่มสมาชิก",
+      note:"เมื่อเพิ่มสมาชิกแล้ว ระบบจะส่งอีเมลแจ้งเตือนการเข้าใช้งานไปยังอีเมลที่ระบุโดยอัตโนมัติ",
+      onConfirm:(values) => {
+        if(!values.name || !values.email) return;
+        MOCK_MEMBERS.push({ id:"m"+(memberSeq++), name:values.name, role:values.role, team:values.team, email:values.email });
+        renderMembers();
+      }
+    });
   }
 
-  function saveBonus(i){
-    const val = document.getElementById("bonusPoints"+i).value;
-    MOCK_HOLIDAY_BONUS[i].bonusPoints = Number(val);
-    flashSaved(event.target);
+  function confirmRemoveMember(id){
+    const m = MOCK_MEMBERS.find(x => x.id === id);
+    if(!m) return;
+    openConfirmModal({
+      title:"ลบสมาชิก",
+      description:`ต้องการลบ ${m.name} (${m.email}) ออกจากทีมใช่หรือไม่? ระบบจะส่งอีเมลแจ้งเตือนไปยังผู้ดูแลระบบและสมาชิกที่ถูกลบโดยอัตโนมัติ`,
+      confirmLabel:"ลบสมาชิก",
+      danger:true,
+      onConfirm:() => {
+        MOCK_MEMBERS = MOCK_MEMBERS.filter(x => x.id !== id);
+        renderMembers();
+      }
+    });
   }
 
-  function flashSaved(btn){
-    const original = btn.textContent;
-    btn.textContent = "บันทึกแล้ว ✓";
-    btn.disabled = true;
-    setTimeout(() => { btn.textContent = original; btn.disabled = false; }, 1200);
+  function applyDateFilter(){
+    // demo-only: this concept build has no live database, so the filter re-renders the same
+    // mock dataset. Wire this up to real date-scoped queries once the backend exists.
+    renderAgentDetail();
+    renderHolidayCases();
   }
 </script>
 </body>

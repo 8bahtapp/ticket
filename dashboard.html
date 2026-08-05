@@ -20,24 +20,33 @@
       <div class="content-header">
         <div>
           <h1>ภาพรวม</h1>
-          <p class="subtitle">สรุปสถานะเคสและคุณภาพการให้บริการประจำวันนี้</p>
+          <p class="subtitle">สรุปสถานะเคสและคุณภาพการให้บริการ</p>
         </div>
         <div class="filters">
-          <select class="select">
-            <option>วันนี้</option>
-            <option>7 วันล่าสุด</option>
-            <option>เดือนนี้</option>
-          </select>
+          <span class="small">จาก</span>
+          <input class="input" type="date" id="dateFrom" value="2026-07-30">
+          <span class="small">ถึง</span>
+          <input class="input" type="date" id="dateTo" value="2026-08-05">
+          <button class="btn" onclick="applyDateFilter()">ใช้ตัวกรอง</button>
           <button class="btn">Export CSV</button>
         </div>
       </div>
 
+      <div class="search" style="max-width:420px; margin-bottom:16px;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
+        <input class="input" style="width:100%;" id="dashSearch" placeholder="ค้นหาบริษัท / อีเมล / เบอร์โทร / Ticket ID...">
+      </div>
+
       <!-- ticket status overview -->
       <div class="card" style="margin-bottom:16px;">
-        <div class="card-head"><h3>สถานะเคสทั้งหมด</h3><span class="small">คลิกเพื่อดูรายการเคสในสถานะนั้น</span></div>
-        <div class="card-pad">
+        <div class="card-head collapsible" onclick="toggleCardBody(this)">
+          <h3>สถานะเคสทั้งหมด</h3>
+          <span class="chevron">▾</span>
+        </div>
+        <div class="card-body-collapsible card-pad">
           <div class="grid" style="grid-template-columns:repeat(6,1fr); gap:10px;" id="statusChips"></div>
           <div class="chart-placeholder" id="statusChart" style="margin-top:16px;"></div>
+          <div class="small" style="margin-top:6px; color:var(--text-mute);">กราฟเปรียบเทียบเฉพาะสถานะที่ดำเนินการอยู่ (ไม่รวม ALL TICKET เพื่อไม่ให้สเกลกราฟเพี้ยน)</div>
         </div>
       </div>
 
@@ -45,21 +54,28 @@
 
       <div class="grid grid-2" style="margin-bottom:16px; align-items:start;">
         <div class="card">
-          <div class="card-head">
-            <h3>เคสรายเดือน (ย้อนหลัง 7 เดือน)</h3>
-            <span class="small">รวมทุกช่องทาง</span>
+          <div class="card-head collapsible" onclick="toggleCardBody(this)">
+            <h3>เปรียบเทียบรายเดือนกับปีที่แล้ว</h3>
+            <span class="chevron">▾</span>
           </div>
-          <div class="card-pad">
-            <div class="chart-placeholder" id="monthlyChart"></div>
+          <div class="card-body-collapsible card-pad">
+            <div class="flex between" style="margin-bottom:10px;">
+              <select class="select" id="trendMetricDash"></select>
+            </div>
+            <div class="trend-legend">
+              <span><span class="dot" style="background:var(--accent);"></span>ปีนี้</span>
+              <span><span class="dot" style="background:var(--border-strong);"></span>ปีก่อน</span>
+            </div>
+            <div class="trend-chart" id="trendChartDash"></div>
           </div>
         </div>
 
         <div class="card">
-          <div class="card-head">
-            <h3>ภาระงานแยกตามทีม</h3>
-            <span class="small">เคสที่เปิดอยู่ตอนนี้</span>
+          <div class="card-head collapsible" onclick="toggleCardBody(this)">
+            <h3>ภาระงานแยกตามพนักงาน</h3>
+            <span class="chevron">▾</span>
           </div>
-          <div class="card-pad" id="teamLoad"></div>
+          <div class="card-body-collapsible card-pad" id="employeeLoad"></div>
         </div>
       </div>
 
@@ -86,12 +102,14 @@
 <script src="js/app.js"></script>
 <script>
   const u = renderShell("dashboard");
+  let scopedTickets = [];
+
   if(u){
     setTopbarContext(`Role ปัจจุบัน: <span class="badge badge-role">${u.roleLabel}</span> ${u.role !== "admin" ? "· มองเห็นเฉพาะทีม "+u.team : "· มองเห็นทุกทีม"}`);
 
-    const visibleTickets = u.role === "admin" ? MOCK_TICKETS : (u.role === "supervisor" ? MOCK_TICKETS : MOCK_TICKETS.filter(t => t.team === u.team));
+    scopedTickets = u.role === "admin" ? MOCK_TICKETS : (u.role === "supervisor" ? MOCK_TICKETS : MOCK_TICKETS.filter(t => t.team === u.team));
 
-    // status chips
+    // status chips (full list) + comparison bar chart (excludes ALL TICKET so the scale stays readable)
     document.getElementById("statusChips").innerHTML = MOCK_STATUS_OVERVIEW.map(s => `
       <div class="card" style="padding:12px; cursor:pointer;" onclick="window.location.href='tickets.html'" title="${s.hint || ''}">
         <div class="small" style="font-weight:700; letter-spacing:.03em;">${s.label}</div>
@@ -99,17 +117,18 @@
       </div>
     `).join("");
 
-    const maxS = Math.max(...MOCK_STATUS_OVERVIEW.map(x=>x.count));
-    document.getElementById("statusChart").innerHTML = MOCK_STATUS_OVERVIEW.map(s => `
+    const chartable = MOCK_STATUS_OVERVIEW.filter(s => s.key !== "all");
+    const maxS = Math.max(...chartable.map(x=>x.count));
+    document.getElementById("statusChart").innerHTML = chartable.map(s => `
       <div style="flex:1; display:flex; flex-direction:column; align-items:center;">
         <div class="bar" style="height:140px; width:100%;">
-          <div class="bar-fill" style="height:${(s.count/maxS*100).toFixed(0)}%;"></div>
+          <div class="bar-fill" style="height:${Math.max(6,(s.count/maxS*100)).toFixed(0)}%;"></div>
         </div>
         <div class="bar-label">${s.label}</div>
       </div>
     `).join("");
 
-    // KPI cards, plain-language labels
+    // KPI cards, plain-language labels, CSAT on /10
     document.getElementById("kpiCards").innerHTML = Object.values(MOCK_KPIS).map(k => `
       <div class="card kpi">
         <div class="label">${k.label} <span class="small" style="font-weight:400;">(${k.abbr})</span></div>
@@ -121,40 +140,57 @@
       </div>
     `).join("");
 
-    document.getElementById("recentTickets").innerHTML = visibleTickets.slice(0,6).map(t => `
+    setupTrendSection("trendMetricDash", "trendChartDash", "จำนวนเคส");
+
+    renderEmployeeLoad();
+    renderRecentTickets(scopedTickets);
+
+    document.getElementById("dashSearch").addEventListener("input", (e) => {
+      const q = e.target.value.trim().toLowerCase();
+      const filtered = !q ? scopedTickets : scopedTickets.filter(t =>
+        t.company.toLowerCase().includes(q) ||
+        (t.email||"").toLowerCase().includes(q) ||
+        (t.phone||"").toLowerCase().includes(q) ||
+        t.id.toLowerCase().includes(q)
+      );
+      renderRecentTickets(filtered);
+    });
+  }
+
+  function renderEmployeeLoad(){
+    const list = u.role === "admin" ? MOCK_EMPLOYEES : MOCK_EMPLOYEES.filter(e => e.team === u.team);
+    document.getElementById("employeeLoad").innerHTML = list.map(e => `
+      <div style="margin-bottom:12px;">
+        <div class="flex between" style="margin-bottom:4px; font-size:13px;">
+          <span>${e.name} <span class="small">(${e.team})</span></span>
+          <span class="small">${e.open} เคสเปิดอยู่ ${e.breach ? `· <span style="color:var(--st-breach); font-weight:700;">เกิน SLA ${e.breach}</span>` : ""}</span>
+        </div>
+        <div style="height:6px; background:var(--surface-2); border-radius:4px; overflow:hidden; border:1px solid var(--border);">
+          <div style="height:100%; width:${Math.min(e.open*10,100)}%; background:var(--accent);"></div>
+        </div>
+      </div>
+    `).join("") || `<div class="empty">ไม่มีข้อมูลพนักงานในทีมนี้</div>`;
+  }
+
+  function renderRecentTickets(list){
+    document.getElementById("recentTickets").innerHTML = list.slice(0,8).map(t => `
       <tr onclick="window.location.href='tickets.html?id=${t.id}'">
         <td class="mono">${t.id}</td>
         <td>${t.company}</td>
-        <td>${statusBadge(t.status)} ${breachBadge(t)}</td>
+        <td>${statusBadge(t.status)} ${breachBadge(t)} ${t.isHoliday ? `<span class="badge badge-holiday"><span class="badge-dot"></span>เคสวันหยุด</span>` : ""}</td>
         <td>${t.team} / ${t.product}</td>
         <td>${t.assignee}</td>
         <td>${t.channel}</td>
         <td>${t.waiting}</td>
       </tr>
-    `).join("");
+    `).join("") || `<tr><td colspan="7" class="empty">ไม่พบเคสที่ตรงกับเงื่อนไข</td></tr>`;
+  }
 
-    // monthly bar chart (plain divs, no library)
-    const max = Math.max(...MOCK_MONTHLY.map(x=>x.v));
-    document.getElementById("monthlyChart").innerHTML = MOCK_MONTHLY.map(x => `
-      <div style="flex:1; display:flex; flex-direction:column; align-items:center;">
-        <div class="bar" style="height:180px; width:100%;">
-          <div class="bar-fill" style="height:${(x.v/max*100).toFixed(0)}%;"></div>
-        </div>
-        <div class="bar-label">${x.m}</div>
-      </div>
-    `).join("");
-
-    document.getElementById("teamLoad").innerHTML = MOCK_TEAM_LOAD.map(t => `
-      <div style="margin-bottom:12px;">
-        <div class="flex between" style="margin-bottom:4px; font-size:13px;">
-          <span>${t.team}</span>
-          <span class="small">${t.open} เคสเปิดอยู่ ${t.breach ? `· <span style="color:var(--st-breach); font-weight:700;">เกิน SLA ${t.breach}</span>` : ""}</span>
-        </div>
-        <div style="height:6px; background:var(--surface-2); border-radius:4px; overflow:hidden; border:1px solid var(--border);">
-          <div style="height:100%; width:${Math.min(t.open*5,100)}%; background:var(--accent);"></div>
-        </div>
-      </div>
-    `).join("");
+  function applyDateFilter(){
+    // demo-only: this concept build has no live database, so the filter re-renders the same
+    // mock dataset. Wire this up to a real date field once the backend exists.
+    renderRecentTickets(scopedTickets);
+    renderEmployeeLoad();
   }
 </script>
 </body>

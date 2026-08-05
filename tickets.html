@@ -16,10 +16,10 @@
   <div class="main">
     <div class="topbar" id="topbar-slot"></div>
 
-    <div class="tickets-layout">
+    <div class="tickets-layout resizable" id="ticketsLayout" style="--queue-w:300px; --right-w:300px;">
 
       <!-- LEFT: queue -->
-      <div class="col-queue">
+      <div class="col-queue" id="colQueue">
         <div class="queue-search">
           <div class="search">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
@@ -38,6 +38,8 @@
         <div id="queueList"></div>
       </div>
 
+      <div class="resize-handle" id="handleLeft"></div>
+
       <!-- MIDDLE: chat -->
       <div class="col-chat">
         <div class="chat-header">
@@ -48,6 +50,8 @@
             </div>
           </div>
           <div class="chat-header-actions">
+            <button class="btn btn-sm panel-toggle-btn" id="toggleQueueBtn" onclick="togglePanel('queue')">ซ่อนคิว</button>
+            <button class="btn btn-sm panel-toggle-btn" id="toggleRightBtn" onclick="togglePanel('right')">ซ่อนข้อมูลลูกค้า</button>
             <select class="select" id="statusSelect">
               <option value="new">ใหม่</option>
               <option value="in_progress">กำลังดำเนินการ</option>
@@ -72,8 +76,10 @@
         </div>
       </div>
 
+      <div class="resize-handle" id="handleRight"></div>
+
       <!-- RIGHT: customer info -->
-      <div class="col-detail-right" id="rightPanel"></div>
+      <div class="col-detail-right" id="colRight"></div>
 
     </div>
   </div>
@@ -112,8 +118,31 @@
     });
 
     document.getElementById("searchInput").addEventListener("input", applyFiltersAndRender);
-
     document.getElementById("statusSelect").addEventListener("change", handleStatusChange);
+
+    const layout = document.getElementById("ticketsLayout");
+    initColumnResize("handleLeft", layout, "--queue-w", 220, 460, "right");
+    initColumnResize("handleRight", layout, "--right-w", 220, 460, "left");
+  }
+
+  function togglePanel(which){
+    if(which === "queue"){
+      const col = document.getElementById("colQueue");
+      const handle = document.getElementById("handleLeft");
+      const btn = document.getElementById("toggleQueueBtn");
+      const hidden = col.classList.toggle("col-hidden");
+      handle.classList.toggle("col-hidden", hidden);
+      btn.textContent = hidden ? "แสดงคิว" : "ซ่อนคิว";
+      btn.classList.toggle("is-hidden", hidden);
+    } else {
+      const col = document.getElementById("colRight");
+      const handle = document.getElementById("handleRight");
+      const btn = document.getElementById("toggleRightBtn");
+      const hidden = col.classList.toggle("col-hidden");
+      handle.classList.toggle("col-hidden", hidden);
+      btn.textContent = hidden ? "แสดงข้อมูลลูกค้า" : "ซ่อนข้อมูลลูกค้า";
+      btn.classList.toggle("is-hidden", hidden);
+    }
   }
 
   function getFilteredList(){
@@ -148,7 +177,7 @@
           <span class="ticket-id mono">${t.id}</span>
           <span class="flex gap-6">${statusBadge(t.status)}${breachBadge(t)}</span>
         </div>
-        <div class="ticket-company">${t.company}</div>
+        <div class="ticket-company">${t.company} ${t.isHoliday ? `<span class="badge badge-holiday" style="margin-left:4px;"><span class="badge-dot"></span>วันหยุด</span>` : ""}</div>
         <div class="ticket-preview">${t.preview}</div>
         <div class="ticket-meta-row">
           <span class="small">${t.channel} · ${t.team} / ${t.product}</span>
@@ -181,38 +210,55 @@
     document.getElementById("chatBody").scrollTop = 999999;
   }
 
+  function sideBlockHeader(title){
+    return `<div class="side-block-header" onclick="toggleSideBlock(this)"><h4 style="margin:0;">${title}</h4><span class="chevron">▾</span></div>`;
+  }
+
   function renderRightPanel(){
     const t = activeTicket;
-    document.getElementById("rightPanel").innerHTML = `
+    document.getElementById("colRight").innerHTML = `
       <div class="side-block">
-        <h4>ข้อมูลลูกค้า</h4>
-        <div class="info-row"><span class="k">บริษัท</span><span class="v">${t.company}</span></div>
-        <div class="info-row"><span class="k">ช่องทางที่แจ้งเคส</span><span class="v">${t.channel}</span></div>
-        <div class="info-row"><span class="k">อีเมล</span><span class="v">${t.email}</span></div>
-        <div class="info-row"><span class="k">เบอร์โทรศัพท์</span><span class="v">${t.phone}</span></div>
-        <div class="small" style="margin-top:6px; color:var(--text-mute);">ข้อมูลติดต่ออ้างอิงจากตอนที่เปิดเคส</div>
-      </div>
-      <div class="side-block">
-        <h4>ทีม / สินค้าที่เกี่ยวข้อง</h4>
-        <div class="chip-list">
-          <span class="chip">ทีม ${t.team}</span>
-          <span class="chip">${t.product}</span>
+        ${sideBlockHeader("ข้อมูลลูกค้า")}
+        <div class="side-block-body">
+          <div class="info-row"><span class="k">บริษัท</span><span class="v">${t.company}</span></div>
+          <div class="info-row"><span class="k">ช่องทางที่แจ้งเคส</span><span class="v">${t.channel}</span></div>
+          <div class="info-row"><span class="k">อีเมล</span><span class="v">${t.email}</span></div>
+          <div class="info-row"><span class="k">เบอร์โทรศัพท์</span><span class="v">${t.phone}</span></div>
+          ${t.isHoliday ? `<div style="margin-top:8px;">${breachBadgeHoliday()}</div>` : ""}
+          <div class="small" style="margin-top:6px; color:var(--text-mute);">ข้อมูลติดต่ออ้างอิงจากตอนที่เปิดเคส</div>
         </div>
       </div>
       <div class="side-block">
-        <h4>Sub-tasks / ทีมที่เกี่ยวข้อง</h4>
-        <div class="info-row"><span class="k">ผู้รับผิดชอบเคส</span><span class="v">${t.assignee}</span></div>
-        <div class="info-row"><span class="k">เซลที่ดูแลบัญชี</span><span class="v">${t.sales}</span></div>
-        <button class="btn btn-sm" style="width:100%; margin-top:8px;">+ เพิ่ม Co-assignee ทีมอื่น</button>
+        ${sideBlockHeader("ทีม / สินค้าที่เกี่ยวข้อง")}
+        <div class="side-block-body">
+          <div class="chip-list">
+            <span class="chip">ทีม ${t.team}</span>
+            <span class="chip">${t.product}</span>
+          </div>
+        </div>
       </div>
-      ${t.pendingReason ? `<div class="side-block"><h4>เหตุผลที่รอดำเนินการ</h4><div class="small">${t.pendingReason}</div></div>` : ""}
-      ${t.cancelReason ? `<div class="side-block"><h4>เหตุผลที่ยกเลิก</h4><div class="small">${t.cancelReason}</div></div>` : ""}
-      ${t.closeSummary ? `<div class="side-block"><h4>สรุปการปิดเคส</h4><div class="small">${t.closeSummary}</div></div>` : ""}
       <div class="side-block">
-        <h4>Audit Log (อ่านอย่างเดียว)</h4>
-        ${t.log.map(m => `<div class="small" style="margin-bottom:6px;">${m.time} — ${m.who || 'ระบบ'}: ${m.type === 'internal' ? 'เพิ่ม Internal Note' : (m.type==='agent' ? 'ตอบลูกค้า' : (m.type==='customer' ? 'ลูกค้าส่งข้อความ' : m.text))}</div>`).join("")}
+        ${sideBlockHeader("Sub-tasks / ทีมที่เกี่ยวข้อง")}
+        <div class="side-block-body">
+          <div class="info-row"><span class="k">ผู้รับผิดชอบเคส</span><span class="v">${t.assignee}</span></div>
+          <div class="info-row"><span class="k">อีเมลเซลที่ดูแลบัญชี</span><span class="v">${t.salesEmail}</span></div>
+          <button class="btn btn-sm" style="width:100%; margin-top:8px;">+ เพิ่ม Co-assignee ทีมอื่น</button>
+        </div>
+      </div>
+      ${t.pendingReason ? `<div class="side-block">${sideBlockHeader("เหตุผลที่รอดำเนินการ")}<div class="side-block-body"><div class="small">${t.pendingReason}</div></div></div>` : ""}
+      ${t.cancelReason ? `<div class="side-block">${sideBlockHeader("เหตุผลที่ยกเลิก")}<div class="side-block-body"><div class="small">${t.cancelReason}</div></div></div>` : ""}
+      ${t.closeSummary ? `<div class="side-block">${sideBlockHeader("สรุปการปิดเคส")}<div class="side-block-body"><div class="small">${t.closeSummary}</div></div></div>` : ""}
+      <div class="side-block collapsed">
+        ${sideBlockHeader("Audit Log (อ่านอย่างเดียว)")}
+        <div class="side-block-body">
+          ${t.log.map(m => `<div class="small" style="margin-bottom:6px;">${m.time} — ${m.who || 'ระบบ'}: ${m.type === 'internal' ? 'เพิ่ม Internal Note' : (m.type==='agent' ? 'ตอบลูกค้า' : (m.type==='customer' ? 'ลูกค้าส่งข้อความ' : m.text))}</div>`).join("")}
+        </div>
       </div>
     `;
+  }
+
+  function breachBadgeHoliday(){
+    return `<span class="badge badge-holiday"><span class="badge-dot"></span>เคสนี้รับ/ปิดในวันหยุด</span>`;
   }
 
   function handleStatusChange(e){
@@ -249,7 +295,7 @@
     } else if(newStatus === "closed"){
       openReasonModal({
         title:"ปิดเคส",
-        description:`สรุปนี้จะถูกส่งให้ลูกค้า (${activeTicket.email}) และเซลที่ดูแลบัญชี (${activeTicket.sales}) โดยอัตโนมัติ`,
+        description:`สรุปนี้จะถูกส่งให้ลูกค้า (${activeTicket.email}) และเซลที่ดูแลบัญชี (${activeTicket.salesEmail}) โดยอัตโนมัติ`,
         placeholder:"สรุปอาการ สาเหตุ และวิธีแก้ไขที่ทำให้กับลูกค้า...",
         confirmLabel:"ยืนยันปิดเคสและส่งสรุป",
         onConfirm:(text) => {

@@ -17,7 +17,7 @@
     <div class="topbar" id="topbar-slot"></div>
 
     <div class="content" id="pageContent">
-      <!-- filled by script; access-gated to admin role -->
+      <!-- filled by script; access-gated by role -->
     </div>
   </div>
 </div>
@@ -27,14 +27,15 @@
 <script>
   const u = renderShell("admin");
   const content = document.getElementById("pageContent");
+  let calYear = 2026, calMonth = 8; // demo "today"
 
-  if(u && u.role !== "admin"){
+  if(u && u.role === "agent"){
     content.innerHTML = `
       <div class="card" style="max-width:480px; margin:60px auto; text-align:center;">
         <div class="card-pad">
           <div style="color:var(--st-breach); margin-bottom:10px;">${ICONS.lock}</div>
           <h2>ไม่มีสิทธิ์เข้าถึงหน้านี้</h2>
-          <p class="small">หน้าตั้งค่าระบบสงวนไว้สำหรับ Role: Admin เท่านั้น กรุณาติดต่อผู้ดูแลระบบหากต้องการสิทธิ์เพิ่มเติม</p>
+          <p class="small">หน้าตั้งค่าระบบสงวนไว้สำหรับ Admin และ Supervisor เท่านั้น กรุณาติดต่อผู้ดูแลระบบหากต้องการสิทธิ์เพิ่มเติม</p>
           <a href="dashboard.html" class="btn btn-primary" style="margin-top:8px;">กลับไปหน้าภาพรวม</a>
         </div>
       </div>`;
@@ -43,17 +44,13 @@
 
     const days = ["จันทร์","อังคาร","พุธ","พฤหัสบดี","ศุกร์","เสาร์","อาทิตย์"];
     const weekOff = ["เสาร์","อาทิตย์"];
+    const isAdmin = u.role === "admin";
 
-    content.innerHTML = `
-      <div class="content-header">
-        <div><h1>ตั้งค่าระบบ (Admin Settings)</h1><p class="subtitle">ตั้งเวลาทำการ วันหยุด และเป้าหมายของแต่ละทีม — ทำได้เองโดยไม่ต้องผ่าน Dev</p></div>
-      </div>
-
+    const adminOnlySections = !isAdmin ? "" : `
       <div class="grid grid-2" style="margin-bottom:16px; align-items:start;">
-
         <div class="card">
-          <div class="card-head"><h3>Business Hours Engine</h3><span class="small">เวลาทำการปกติ</span></div>
-          <div class="card-pad">
+          <div class="card-head collapsible" onclick="toggleCardBody(this)"><h3>Business Hours Engine</h3><span class="chevron">▾</span></div>
+          <div class="card-body-collapsible card-pad">
             <div class="hours-grid">
               ${days.map(d => `
                 <div class="hours-day">${d}</div>
@@ -78,8 +75,13 @@
         </div>
 
         <div class="card">
-          <div class="card-head"><h3>ปฏิทินวันหยุด</h3><span class="small">สิงหาคม 2026</span></div>
-          <div class="card-pad">
+          <div class="card-head collapsible" onclick="toggleCardBody(this)"><h3>ปฏิทินวันหยุด</h3><span class="chevron">▾</span></div>
+          <div class="card-body-collapsible card-pad">
+            <div class="flex between" style="margin-bottom:10px;">
+              <button class="btn btn-sm" onclick="shiftMonth(-1)">← เดือนก่อน</button>
+              <strong id="calLabel"></strong>
+              <button class="btn btn-sm" onclick="shiftMonth(1)">เดือนถัดไป →</button>
+            </div>
             <div class="cal-legend">
               <span><span class="legend-dot" style="background:var(--st-breach-bg); border:1px solid #f0c9c9;"></span>วันหยุดนักขัตฤกษ์/บริษัท</span>
               <span><span class="legend-dot" style="background:var(--surface); border:1px solid var(--accent);"></span>วันนี้</span>
@@ -91,11 +93,11 @@
       </div>
 
       <div class="card" style="margin-bottom:16px;">
-        <div class="card-head">
+        <div class="card-head collapsible" onclick="toggleCardBody(this)">
           <h3>ตั้งค่าเป้าหมาย (Target) รายทีม</h3>
-          <span class="small">ปรับเป้าหมายของแต่ละตัวชี้วัดแยกตามทีมได้เอง</span>
+          <span class="chevron">▾</span>
         </div>
-        <div class="table-wrap">
+        <div class="card-body-collapsible table-wrap">
           <table>
             <thead>
               <tr>
@@ -103,7 +105,7 @@
                 <th>เป้าหมายเวลาตอบกลับครั้งแรก (นาที)</th>
                 <th>เป้าหมายเวลาเฉลี่ยแก้ปัญหา (นาที)</th>
                 <th>เป้าหมายอัตราเกินเวลาที่กำหนด (%)</th>
-                <th>เป้าหมายคะแนนความพึงพอใจ (จาก 5)</th>
+                <th>เป้าหมายคะแนนความพึงพอใจ (เต็ม 10)</th>
                 <th></th>
               </tr>
             </thead>
@@ -112,44 +114,91 @@
         </div>
       </div>
 
-      <div class="card">
-        <div class="card-head"><h3>Role & Permission Management</h3></div>
-        <div class="table-wrap">
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-head collapsible" onclick="toggleCardBody(this)"><h3>Role & Permission Management</h3><span class="chevron">▾</span></div>
+        <div class="card-body-collapsible table-wrap">
           <table>
-            <thead><tr><th>Role</th><th>มองเห็นเคส</th><th>รายงาน Analytics</th><th>จัดการสมาชิก/อีเมล</th><th>ตั้งค่าระบบ</th></tr></thead>
+            <thead><tr><th>Role</th><th>มองเห็นเคส</th><th>รายงาน Analytics</th><th>จัดการสมาชิก/อีเมล</th><th>จัดการสินค้า</th><th>ตั้งค่าระบบ</th></tr></thead>
             <tbody>
-              <tr><td><span class="badge badge-role">Admin</span></td><td>ทุกทีม</td><td>เห็น</td><td>แก้ไขได้</td><td>แก้ไขได้</td></tr>
-              <tr><td><span class="badge badge-role">Supervisor</span></td><td>เฉพาะทีมตัวเอง</td><td>เห็น</td><td>แก้ไขได้ (เฉพาะทีมตัวเอง)</td><td>ดูอย่างเดียว</td></tr>
-              <tr><td><span class="badge badge-role">Agent</span></td><td>เฉพาะเคสในทีมตัวเอง</td><td>ไม่แสดง</td><td>ไม่แสดง</td><td>ไม่แสดง</td></tr>
+              <tr><td><span class="badge badge-role">Admin</span></td><td>ทุกทีม</td><td>เห็น</td><td>แก้ไขได้</td><td>ทุกทีม</td><td>แก้ไขได้ทั้งหมด</td></tr>
+              <tr><td><span class="badge badge-role">Supervisor</span></td><td>เฉพาะทีมตัวเอง</td><td>เห็น</td><td>แก้ไขได้ (เฉพาะทีมตัวเอง)</td><td>เฉพาะทีมตัวเอง</td><td>จัดการสินค้าของทีมตัวเองเท่านั้น</td></tr>
+              <tr><td><span class="badge badge-role">Agent</span></td><td>เฉพาะเคสในทีมตัวเอง</td><td>ไม่แสดง</td><td>ไม่แสดง</td><td>ไม่แสดง</td><td>ไม่แสดง</td></tr>
             </tbody>
           </table>
         </div>
       </div>
     `;
 
-    // simple calendar grid for the demo month
-    const heads = ["จ","อ","พ","พฤ","ศ","ส","อา"];
-    let calHtml = heads.map(h => `<div class="cal-head">${h}</div>`).join("");
-    const leadingBlank = 5; // demo offset so month starts mid-week
-    for(let i=0;i<leadingBlank;i++) calHtml += `<div></div>`;
-    for(let d=1; d<=31; d++){
-      const isHoliday = MOCK_HOLIDAYS.includes(d);
-      const isToday = d === 4;
-      calHtml += `<div class="cal-cell ${isHoliday?'holiday':''} ${isToday?'today':''}">${d}</div>`;
-    }
-    document.getElementById("calGrid").innerHTML = calHtml;
+    content.innerHTML = `
+      <div class="content-header">
+        <div><h1>ตั้งค่าระบบ${isAdmin ? " (Admin Settings)" : " — ทีม " + u.team}</h1>
+        <p class="subtitle">${isAdmin ? "ตั้งเวลาทำการ วันหยุด เป้าหมาย และรายชื่อสินค้า — ทำได้เองโดยไม่ต้องผ่าน Dev" : "จัดการรายชื่อสินค้าของทีมคุณ ซึ่งเปลี่ยนแปลงได้บ่อยจึงทำได้เองโดยไม่ต้องผ่าน Dev"}</p></div>
+      </div>
 
-    // per-team target settings
-    document.getElementById("targetsBody").innerHTML = MOCK_TEAM_TARGETS.map((t,i) => `
-      <tr>
-        <td><strong>${t.label}</strong></td>
-        <td><input class="input" style="width:90px;" type="number" min="0" value="${t.frtTarget}" id="frt${i}"></td>
-        <td><input class="input" style="width:90px;" type="number" min="0" value="${t.mttrTarget}" id="mttr${i}"></td>
-        <td><input class="input" style="width:90px;" type="number" min="0" value="${t.slaTarget}" id="sla${i}"></td>
-        <td><input class="input" style="width:90px;" type="number" min="0" max="5" step="0.1" value="${t.csatTarget}" id="csat${i}"></td>
-        <td><button class="btn btn-sm" onclick="saveTeamTarget(${i})">บันทึก</button></td>
-      </tr>
-    `).join("");
+      ${adminOnlySections}
+
+      <div class="card">
+        <div class="card-head collapsible" onclick="toggleCardBody(this)">
+          <h3>จัดการสินค้า${isAdmin ? "" : " — ทีม " + u.team}</h3>
+          <span class="chevron">▾</span>
+        </div>
+        <div class="card-body-collapsible">
+          <div class="card-pad" style="border-bottom:1px solid var(--border);">
+            <button class="btn btn-sm btn-primary" onclick="openAddProductModal()">+ เพิ่มสินค้า</button>
+            <span class="small" style="margin-left:8px; color:var(--text-mute);">รายชื่อสินค้าเปลี่ยนแปลงบ่อย หัวหน้าทีมเพิ่ม/ลบได้เองโดยไม่ต้องผ่าน Dev</span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>กลุ่ม</th><th>ทีม</th><th>สินค้า</th><th></th></tr></thead>
+              <tbody id="productsBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    `;
+
+    if(isAdmin){
+      renderCalendar();
+      document.getElementById("targetsBody").innerHTML = MOCK_TEAM_TARGETS.map((t,i) => `
+        <tr>
+          <td><strong>${t.label}</strong></td>
+          <td><input class="input" style="width:90px;" type="number" min="0" value="${t.frtTarget}" id="frt${i}"></td>
+          <td><input class="input" style="width:90px;" type="number" min="0" value="${t.mttrTarget}" id="mttr${i}"></td>
+          <td><input class="input" style="width:90px;" type="number" min="0" value="${t.slaTarget}" id="sla${i}"></td>
+          <td><input class="input" style="width:90px;" type="number" min="0" max="10" step="0.1" value="${t.csatTarget}" id="csat${i}"></td>
+          <td><button class="btn btn-sm" onclick="saveTeamTarget(${i})">บันทึก</button></td>
+        </tr>
+      `).join("");
+    }
+
+    renderProducts();
+  }
+
+  function renderCalendar(){
+    const heads = ["จ","อ","พ","พฤ","ศ","ส","อา"];
+    const monthNames = ["","มกราคม","กุมภาพันธ์","มีนาคม","เมษายน","พฤษภาคม","มิถุนายน","กรกฎาคม","สิงหาคม","กันยายน","ตุลาคม","พฤศจิกายน","ธันวาคม"];
+    document.getElementById("calLabel").textContent = `${monthNames[calMonth]} ${calYear}`;
+    const key = `${calYear}-${String(calMonth).padStart(2,"0")}`;
+    const holidays = MOCK_HOLIDAYS_BY_MONTH[key] || [];
+    const daysInMonth = new Date(calYear, calMonth, 0).getDate();
+    let firstWeekday = new Date(calYear, calMonth-1, 1).getDay(); // 0=Sun
+    firstWeekday = firstWeekday === 0 ? 6 : firstWeekday - 1; // convert to Mon-first offset
+
+    let html = heads.map(h => `<div class="cal-head">${h}</div>`).join("");
+    for(let i=0;i<firstWeekday;i++) html += `<div></div>`;
+    for(let d=1; d<=daysInMonth; d++){
+      const isHoliday = holidays.includes(d);
+      const isToday = (calYear===2026 && calMonth===8 && d===4);
+      html += `<div class="cal-cell ${isHoliday?'holiday':''} ${isToday?'today':''}">${d}</div>`;
+    }
+    document.getElementById("calGrid").innerHTML = html;
+  }
+
+  function shiftMonth(delta){
+    calMonth += delta;
+    if(calMonth < 1){ calMonth = 12; calYear -= 1; }
+    if(calMonth > 12){ calMonth = 1; calYear += 1; }
+    renderCalendar();
   }
 
   function saveTeamTarget(i){
@@ -157,7 +206,59 @@
     MOCK_TEAM_TARGETS[i].mttrTarget = Number(document.getElementById("mttr"+i).value);
     MOCK_TEAM_TARGETS[i].slaTarget = Number(document.getElementById("sla"+i).value);
     MOCK_TEAM_TARGETS[i].csatTarget = Number(document.getElementById("csat"+i).value);
-    const btn = event.target;
+    flashSaved(event.target);
+  }
+
+  function scopedProducts(){
+    return u.role === "admin" ? PRODUCT_CATALOG : PRODUCT_CATALOG.filter(p => p.team === u.team);
+  }
+
+  function renderProducts(){
+    const rows = scopedProducts();
+    document.getElementById("productsBody").innerHTML = rows.map(p => `
+      <tr>
+        <td>${p.group}</td>
+        <td>${p.team}</td>
+        <td>${p.product}</td>
+        <td><button class="btn btn-sm btn-danger" onclick="confirmRemoveProduct('${p.id}')">ลบ</button></td>
+      </tr>
+    `).join("") || `<tr><td colspan="4" class="empty">ยังไม่มีสินค้าในทีมนี้</td></tr>`;
+  }
+
+  function openAddProductModal(){
+    const teamOptions = u.role === "admin" ? TEAMS.map(t => ({value:t.code, label:t.label})) : [{value:u.team, label:u.team}];
+    openFormModal({
+      title:"เพิ่มสินค้าใหม่",
+      fields:[
+        { id:"group", label:"กลุ่ม", type:"select", options:[{value:"Software",label:"Software"},{value:"Hardware",label:"Hardware"},{value:"Service",label:"Service"}] },
+        { id:"team", label:"ทีม", type:"select", options:teamOptions },
+        { id:"product", label:"ชื่อสินค้า", type:"text", placeholder:"เช่น Revit" },
+      ],
+      confirmLabel:"เพิ่มสินค้า",
+      onConfirm:(values) => {
+        if(!values.product) return;
+        PRODUCT_CATALOG.push({ id:"p"+(productSeq++), group:values.group, team:values.team, product:values.product });
+        renderProducts();
+      }
+    });
+  }
+
+  function confirmRemoveProduct(id){
+    const p = PRODUCT_CATALOG.find(x => x.id === id);
+    if(!p) return;
+    openConfirmModal({
+      title:"ลบสินค้า",
+      description:`ต้องการลบ "${p.product}" (ทีม ${p.team}) ออกจากรายชื่อสินค้าใช่หรือไม่?`,
+      confirmLabel:"ลบสินค้า",
+      danger:true,
+      onConfirm:() => {
+        PRODUCT_CATALOG = PRODUCT_CATALOG.filter(x => x.id !== id);
+        renderProducts();
+      }
+    });
+  }
+
+  function flashSaved(btn){
     const original = btn.textContent;
     btn.textContent = "บันทึกแล้ว ✓";
     btn.disabled = true;
