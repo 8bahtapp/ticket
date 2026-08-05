@@ -360,7 +360,7 @@ tbody tr{ cursor:pointer; }
 }
 
 /* ---------------------------------------------------------------- resizable / collapsible sub-panels */
-.tickets-layout.resizable{ grid-template-columns: var(--queue-w, 300px) 1fr var(--right-w, 300px); }
+.tickets-layout.resizable{ grid-template-columns: var(--queue-w, 300px) 6px 1fr 6px var(--right-w, 300px); }
 .resize-handle{
   width:6px; cursor:col-resize; background:transparent; flex:0 0 auto;
   position:relative; z-index:5; margin:0 -3px;
