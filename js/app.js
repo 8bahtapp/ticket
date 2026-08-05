@@ -58,6 +58,7 @@ function renderShell(activePage){
     topbar.innerHTML = `
       <div class="topbar-left" id="topbar-context"></div>
       <div class="topbar-right">
+        <a href="new-ticket.html" class="btn btn-primary btn-sm">+ แจ้งเคสภายใน</a>
         <div class="icon-btn" title="การแจ้งเตือน">${ICONS.bell}<span class="notif-dot"></span></div>
         <div class="icon-btn" title="ออกจากระบบ" onclick="logout()">${ICONS.logout}</div>
         <div class="user-chip">
@@ -251,7 +252,11 @@ function setupTrendSection(selectId, containerId, defaultMetric){
   render();
 }
 
-/* ---------------------------------------------------------- resizable 3-column layout (tickets page) */
+/* clicking a company/agent name elsewhere in the app jumps to the ticket list pre-filtered to it */
+function filterTicketsByText(text, event){
+  if(event) event.stopPropagation();
+  window.location.href = "tickets.html?q=" + encodeURIComponent(text);
+}
 function initColumnResize(handleId, layoutEl, cssVar, minWidth, maxWidth, grow){
   const handle = document.getElementById(handleId);
   if(!handle) return;

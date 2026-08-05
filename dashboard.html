@@ -162,7 +162,7 @@
     document.getElementById("employeeLoad").innerHTML = list.map(e => `
       <div style="margin-bottom:12px;">
         <div class="flex between" style="margin-bottom:4px; font-size:13px;">
-          <span>${e.name} <span class="small">(${e.team})</span></span>
+          <span><span class="name-link" onclick="filterTicketsByText('${e.name.replace(/'/g,"\\'")}')">${e.name}</span> <span class="small">(${e.team})</span></span>
           <span class="small">${e.open} เคสเปิดอยู่ ${e.breach ? `· <span style="color:var(--st-breach); font-weight:700;">เกิน SLA ${e.breach}</span>` : ""}</span>
         </div>
         <div style="height:6px; background:var(--surface-2); border-radius:4px; overflow:hidden; border:1px solid var(--border);">
@@ -176,10 +176,10 @@
     document.getElementById("recentTickets").innerHTML = list.slice(0,8).map(t => `
       <tr onclick="window.location.href='tickets.html?id=${t.id}'">
         <td class="mono">${t.id}</td>
-        <td>${t.company}</td>
+        <td><span class="name-link" onclick="filterTicketsByText('${t.company.replace(/'/g,"\\'")}', event)">${t.company}</span></td>
         <td>${statusBadge(t.status)} ${breachBadge(t)} ${t.isHoliday ? `<span class="badge badge-holiday"><span class="badge-dot"></span>เคสวันหยุด</span>` : ""}</td>
         <td>${t.team} / ${t.product}</td>
-        <td>${t.assignee}</td>
+        <td><span class="name-link" onclick="filterTicketsByText('${(t.assignee||"").replace(/'/g,"\\'")}', event)">${t.assignee}</span></td>
         <td>${t.channel}</td>
         <td>${t.waiting}</td>
       </tr>

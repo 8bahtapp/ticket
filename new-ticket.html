@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>แจ้งเคสภายใน · 8Baht Support Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="app">
+  <aside class="sidebar" id="sidebar-slot"></aside>
+
+  <div class="main">
+    <div class="topbar" id="topbar-slot"></div>
+
+    <div class="content">
+      <div class="content-header">
+        <div>
+          <h1>แจ้งเคสภายใน</h1>
+          <p class="subtitle">สำหรับเจ้าหน้าที่บันทึกเคสที่ลูกค้าติดต่อเข้ามาทางโทรศัพท์ (หรือช่องทางอื่นที่ยังไม่ได้เข้าระบบอัตโนมัติ)</p>
+        </div>
+      </div>
+
+      <div class="grid grid-2" style="align-items:start; gap:16px;">
+        <div class="card">
+          <div class="card-head"><h3>ข้อมูลเคสใหม่</h3></div>
+          <div class="card-pad">
+            <form id="newTicketForm">
+
+              <div class="form-row">
+                <label>ช่องทางที่ลูกค้าติดต่อเข้ามา *</label>
+                <select id="fChannel">
+                  <option value="โทรศัพท์" selected>โทรศัพท์</option>
+                  <option value="LINE OA">LINE OA</option>
+                  <option value="เว็บไซต์">เว็บไซต์</option>
+                  <option value="Walk-in">Walk-in (เข้ามาที่ออฟฟิศ)</option>
+                </select>
+              </div>
+
+              <div class="form-row">
+                <label>ชื่อบริษัท *</label>
+                <input id="fCompany" type="text" placeholder="เช่น บริษัท ตัวอย่าง จำกัด" required>
+              </div>
+
+              <div class="grid grid-2" style="gap:12px;">
+                <div class="form-row">
+                  <label>อีเมลลูกค้า</label>
+                  <input id="fEmail" type="email" placeholder="name@company.co.th">
+                </div>
+                <div class="form-row">
+                  <label>เบอร์โทรศัพท์ *</label>
+                  <input id="fPhone" type="text" placeholder="0XX-XXX-XXXX" required>
+                </div>
+              </div>
+
+              <div class="grid grid-2" style="gap:12px;">
+                <div class="form-row">
+                  <label>ทีม *</label>
+                  <select id="fTeam"></select>
+                </div>
+                <div class="form-row">
+                  <label>สินค้า *</label>
+                  <select id="fProduct"></select>
+                </div>
+              </div>
+
+              <div class="grid grid-2" style="gap:12px;">
+                <div class="form-row">
+                  <label>ประเภทการให้บริการ</label>
+                  <select id="fServiceType"></select>
+                </div>
+                <div class="form-row">
+                  <label>ระดับความสำคัญ</label>
+                  <select id="fPriority">
+                    <option value="ต่ำ">ต่ำ</option>
+                    <option value="กลาง" selected>กลาง</option>
+                    <option value="สูง">สูง</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="grid grid-2" style="gap:12px;">
+                <div class="form-row">
+                  <label>ผู้รับผิดชอบเคส</label>
+                  <select id="fAssignee"><option value="ยังไม่มอบหมาย">ยังไม่มอบหมาย</option></select>
+                </div>
+                <div class="form-row">
+                  <label>อีเมลเซลที่ดูแลบัญชี</label>
+                  <input id="fSalesEmail" type="email" placeholder="sales@8baht.com">
+                </div>
+              </div>
+
+              <div class="form-row">
+                <label>รายละเอียดที่ลูกค้าแจ้ง *</label>
+                <textarea id="fDetail" rows="4" style="width:100%; padding:9px 11px; border:1px solid var(--border-strong); border-radius:6px; font-family:inherit; resize:vertical;" placeholder="สรุปอาการ/คำขอของลูกค้าตามที่ได้รับแจ้งทางโทรศัพท์..." required></textarea>
+              </div>
+
+              <div class="modal-error" id="formError" style="display:none; margin-bottom:10px;">กรุณากรอกข้อมูลที่จำเป็น (มีเครื่องหมาย *) ให้ครบก่อนบันทึก</div>
+
+              <div class="flex gap-8">
+                <button type="submit" class="btn btn-primary">บันทึกและสร้างเคส</button>
+                <a href="tickets.html" class="btn">ยกเลิก</a>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><h3>หมายเหตุการใช้งาน</h3></div>
+          <div class="card-pad small" style="line-height:1.8;">
+            <p>ใช้หน้านี้เมื่อลูกค้าติดต่อเข้ามาทางช่องทางที่ไม่ได้สร้างเคสอัตโนมัติ เช่น โทรศัพท์เข้าออฟฟิศโดยตรง หรือแวะมาที่ออฟฟิศ (Walk-in)</p>
+            <p>ถ้าลูกค้าติดต่อทาง LINE OA หรือเว็บไซต์ตามปกติ เคสจะถูกสร้างอัตโนมัติอยู่แล้ว — ใช้หน้านี้เฉพาะกรณีที่ต้องบันทึกย้อนหลังหรือช่องทางนั้นมีปัญหา</p>
+            <p>เมื่อบันทึกแล้ว ระบบจะพาไปยังหน้าเคสที่สร้างขึ้นทันที เพื่อดำเนินการต่อ (ตอบกลับลูกค้า / เพิ่ม Internal Note ฯลฯ)</p>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script src="js/data.js"></script>
+<script src="js/app.js"></script>
+<script>
+  const u = renderShell("tickets");
+
+  if(u){
+    setTopbarContext(`Role ปัจจุบัน: <span class="badge badge-role">${u.roleLabel}</span>`);
+
+    const teamSelect = document.getElementById("fTeam");
+    const productSelect = document.getElementById("fProduct");
+    const assigneeSelect = document.getElementById("fAssignee");
+    const serviceTypeSelect = document.getElementById("fServiceType");
+
+    teamSelect.innerHTML = TEAMS.map(t => `<option value="${t.code}">${t.label}</option>`).join("");
+    serviceTypeSelect.innerHTML = SERVICE_TYPES.map(s => `<option value="${s}">${s}</option>`).join("");
+
+    function refreshProducts(){
+      const team = teamSelect.value;
+      const products = PRODUCT_CATALOG.filter(p => p.team === team);
+      productSelect.innerHTML = products.map(p => `<option value="${p.product}">${p.product}</option>`).join("") || `<option value="">— ไม่มีสินค้าในทีมนี้ —</option>`;
+    }
+    function refreshAssignees(){
+      const team = teamSelect.value;
+      const people = MOCK_EMPLOYEES.filter(e => e.team === team);
+      assigneeSelect.innerHTML = `<option value="ยังไม่มอบหมาย">ยังไม่มอบหมาย</option>` + people.map(e => `<option value="${e.name}">${e.name}</option>`).join("");
+    }
+
+    teamSelect.addEventListener("change", () => { refreshProducts(); refreshAssignees(); });
+    refreshProducts();
+    refreshAssignees();
+
+    document.getElementById("newTicketForm").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const company = document.getElementById("fCompany").value.trim();
+      const phone = document.getElementById("fPhone").value.trim();
+      const detail = document.getElementById("fDetail").value.trim();
+      if(!company || !phone || !detail){
+        document.getElementById("formError").style.display = "block";
+        return;
+      }
+
+      const channel = document.getElementById("fChannel").value;
+      const team = teamSelect.value;
+      const product = productSelect.value;
+      const newId = nextTicketId();
+      const now = new Date().toLocaleTimeString("th-TH", {hour:'2-digit', minute:'2-digit'});
+
+      const ticket = {
+        id:newId,
+        company,
+        status:"new",
+        breach:false,
+        isHoliday:false,
+        priority:document.getElementById("fPriority").value,
+        serviceType:serviceTypeSelect.value,
+        team, product,
+        assignee:assigneeSelect.value,
+        salesEmail:document.getElementById("fSalesEmail").value.trim() || "—",
+        channel,
+        email:document.getElementById("fEmail").value.trim() || "—",
+        phone,
+        preview:detail.slice(0,60),
+        time:now,
+        date:new Date().toISOString().slice(0,10),
+        waiting:"0 นาที",
+        log:[
+          {type:"system", text:`เคสถูกสร้างโดย ${u.name} (แจ้งเคสภายใน — ช่องทาง: ${channel})`, time:now},
+          {type:"customer", text:detail, time:now},
+        ],
+      };
+
+      MOCK_TICKETS.push(ticket);
+      window.location.href = "tickets.html?id=" + newId;
+    });
+  }
+</script>
+</body>
+</html>

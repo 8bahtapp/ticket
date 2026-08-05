@@ -20,22 +20,31 @@
 
       <!-- LEFT: queue -->
       <div class="col-queue" id="colQueue">
-        <div class="queue-search">
-          <div class="search">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
-            <input class="input" style="width:100%;" id="searchInput" placeholder="ค้นหาบริษัท / อีเมล / เบอร์โทร / note...">
+        <div class="fold-strip" onclick="toggleQueueCollapse()" title="แสดงคิวเคส">
+          <span class="fold-arrow">›</span>
+          <span class="fold-label">คิวเคส</span>
+        </div>
+        <div class="queue-panel-inner" id="queuePanelInner">
+          <div class="queue-search">
+            <div class="search">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
+              <input class="input" style="width:100%;" id="searchInput" placeholder="ค้นหาบริษัท / อีเมล / เบอร์โทร / note...">
+            </div>
+          </div>
+          <div class="queue-tabs" id="queueTabs">
+            <div class="queue-tab active" data-filter="all">ทั้งหมด</div>
+            <div class="queue-tab" data-filter="new">ใหม่</div>
+            <div class="queue-tab" data-filter="in_progress">กำลังดำเนินการ</div>
+            <div class="queue-tab" data-filter="pending">รอดำเนินการ</div>
+            <div class="queue-tab" data-filter="breach">เกิน SLA</div>
+            <div class="queue-tab" data-filter="closed">ปิดเคส</div>
+            <div class="queue-tab" data-filter="cancel">ยกเลิก</div>
+          </div>
+          <div id="queueList"></div>
+          <div class="panel-collapse-row">
+            <button class="btn btn-sm" onclick="toggleQueueCollapse()">‹ พับซ่อนคิว</button>
           </div>
         </div>
-        <div class="queue-tabs" id="queueTabs">
-          <div class="queue-tab active" data-filter="all">ทั้งหมด</div>
-          <div class="queue-tab" data-filter="new">ใหม่</div>
-          <div class="queue-tab" data-filter="in_progress">กำลังดำเนินการ</div>
-          <div class="queue-tab" data-filter="pending">รอดำเนินการ</div>
-          <div class="queue-tab" data-filter="breach">เกิน SLA</div>
-          <div class="queue-tab" data-filter="closed">ปิดเคส</div>
-          <div class="queue-tab" data-filter="cancel">ยกเลิก</div>
-        </div>
-        <div id="queueList"></div>
       </div>
 
       <div class="resize-handle" id="handleLeft"></div>
@@ -50,8 +59,7 @@
             </div>
           </div>
           <div class="chat-header-actions">
-            <button class="btn btn-sm panel-toggle-btn" id="toggleQueueBtn" onclick="togglePanel('queue')">ซ่อนคิว</button>
-            <button class="btn btn-sm panel-toggle-btn" id="toggleRightBtn" onclick="togglePanel('right')">ซ่อนข้อมูลลูกค้า</button>
+            <button class="btn btn-sm" onclick="openEditCaseModal()">แก้ไขข้อมูลเคส</button>
             <select class="select" id="statusSelect">
               <option value="new">ใหม่</option>
               <option value="in_progress">กำลังดำเนินการ</option>
@@ -79,7 +87,18 @@
       <div class="resize-handle" id="handleRight"></div>
 
       <!-- RIGHT: customer info -->
-      <div class="col-detail-right" id="colRight"></div>
+      <div class="col-detail-right" id="colRight">
+        <div class="fold-strip" onclick="toggleRightCollapse()" title="แสดงข้อมูลลูกค้า">
+          <span class="fold-arrow">‹</span>
+          <span class="fold-label">ข้อมูลลูกค้า</span>
+        </div>
+        <div class="panel-inner" id="rightPanelInner">
+          <div class="panel-collapse-row" style="border-top:none; border-bottom:1px solid var(--border);">
+            <button class="btn btn-sm" onclick="toggleRightCollapse()">พับซ่อนข้อมูลลูกค้า ›</button>
+          </div>
+          <div id="rightPanel"></div>
+        </div>
+      </div>
 
     </div>
   </div>
@@ -93,6 +112,8 @@
   let activeTicket = null;
   let visibleTickets = [];
   let currentTabFilter = "all";
+  let queueCollapsed = false, rightCollapsed = false;
+  let queueWidthBeforeCollapse = 300, rightWidthBeforeCollapse = 300;
 
   if(u){
     setTopbarContext(`Role ปัจจุบัน: <span class="badge badge-role">${u.roleLabel}</span>`);
@@ -100,9 +121,12 @@
     visibleTickets = u.role === "admin" ? MOCK_TICKETS
       : (u.role === "supervisor" ? MOCK_TICKETS : MOCK_TICKETS.filter(t => t.team === u.team));
 
+    const params = new URLSearchParams(window.location.search);
+    const wantedQuery = params.get("q");
+    if(wantedQuery) document.getElementById("searchInput").value = wantedQuery;
+
     applyFiltersAndRender();
 
-    const params = new URLSearchParams(window.location.search);
     const wantedId = params.get("id");
     const initialList = getFilteredList();
     const initial = initialList.find(t => t.id === wantedId) || initialList[0];
@@ -125,24 +149,37 @@
     initColumnResize("handleRight", layout, "--right-w", 220, 460, "left");
   }
 
-  function togglePanel(which){
-    if(which === "queue"){
-      const col = document.getElementById("colQueue");
-      const handle = document.getElementById("handleLeft");
-      const btn = document.getElementById("toggleQueueBtn");
-      const hidden = col.classList.toggle("col-hidden");
-      handle.classList.toggle("col-hidden", hidden);
-      btn.textContent = hidden ? "แสดงคิว" : "ซ่อนคิว";
-      btn.classList.toggle("is-hidden", hidden);
+  /* ---- fold-to-edge collapse for the queue / customer-info panels ---- */
+  function toggleQueueCollapse(){
+    const layout = document.getElementById("ticketsLayout");
+    const col = document.getElementById("colQueue");
+    const handle = document.getElementById("handleLeft");
+    queueCollapsed = !queueCollapsed;
+    if(queueCollapsed){
+      queueWidthBeforeCollapse = parseInt(getComputedStyle(layout).getPropertyValue("--queue-w")) || 300;
+      layout.style.setProperty("--queue-w", "40px");
+      handle.classList.add("col-hidden");
     } else {
-      const col = document.getElementById("colRight");
-      const handle = document.getElementById("handleRight");
-      const btn = document.getElementById("toggleRightBtn");
-      const hidden = col.classList.toggle("col-hidden");
-      handle.classList.toggle("col-hidden", hidden);
-      btn.textContent = hidden ? "แสดงข้อมูลลูกค้า" : "ซ่อนข้อมูลลูกค้า";
-      btn.classList.toggle("is-hidden", hidden);
+      layout.style.setProperty("--queue-w", queueWidthBeforeCollapse + "px");
+      handle.classList.remove("col-hidden");
     }
+    col.classList.toggle("collapsed", queueCollapsed);
+  }
+
+  function toggleRightCollapse(){
+    const layout = document.getElementById("ticketsLayout");
+    const col = document.getElementById("colRight");
+    const handle = document.getElementById("handleRight");
+    rightCollapsed = !rightCollapsed;
+    if(rightCollapsed){
+      rightWidthBeforeCollapse = parseInt(getComputedStyle(layout).getPropertyValue("--right-w")) || 300;
+      layout.style.setProperty("--right-w", "40px");
+      handle.classList.add("col-hidden");
+    } else {
+      layout.style.setProperty("--right-w", rightWidthBeforeCollapse + "px");
+      handle.classList.remove("col-hidden");
+    }
+    col.classList.toggle("collapsed", rightCollapsed);
   }
 
   function getFilteredList(){
@@ -159,6 +196,7 @@
         return t.company.toLowerCase().includes(q)
           || (t.email||"").toLowerCase().includes(q)
           || (t.phone||"").toLowerCase().includes(q)
+          || (t.assignee||"").toLowerCase().includes(q)
           || t.id.toLowerCase().includes(q)
           || inNotes;
       });
@@ -170,6 +208,17 @@
     renderQueue(getFilteredList());
   }
 
+  /** Click a company or agent name anywhere in this page to filter the queue to it. */
+  function filterInPage(text, event){
+    if(event) event.stopPropagation();
+    document.getElementById("searchInput").value = text;
+    currentTabFilter = "all";
+    document.querySelectorAll(".queue-tab").forEach(t=>t.classList.remove("active"));
+    document.querySelector('.queue-tab[data-filter="all"]').classList.add("active");
+    if(queueCollapsed) toggleQueueCollapse();
+    applyFiltersAndRender();
+  }
+
   function renderQueue(list){
     document.getElementById("queueList").innerHTML = list.map(t => `
       <div class="ticket-item ${t.breach ? 'breach' : (t.status==='new'?'new':(t.status==='pending'?'pending':''))} ${activeTicket && activeTicket.id===t.id ? 'selected':''}" onclick="openTicket('${t.id}')">
@@ -177,7 +226,10 @@
           <span class="ticket-id mono">${t.id}</span>
           <span class="flex gap-6">${statusBadge(t.status)}${breachBadge(t)}</span>
         </div>
-        <div class="ticket-company">${t.company} ${t.isHoliday ? `<span class="badge badge-holiday" style="margin-left:4px;"><span class="badge-dot"></span>วันหยุด</span>` : ""}</div>
+        <div class="ticket-company">
+          <span class="name-link" onclick="filterInPage('${t.company.replace(/'/g,"\\'")}', event)">${t.company}</span>
+          ${t.isHoliday ? `<span class="badge badge-holiday" style="margin-left:4px;"><span class="badge-dot"></span>วันหยุด</span>` : ""}
+        </div>
         <div class="ticket-preview">${t.preview}</div>
         <div class="ticket-meta-row">
           <span class="small">${t.channel} · ${t.team} / ${t.product}</span>
@@ -216,16 +268,17 @@
 
   function renderRightPanel(){
     const t = activeTicket;
-    document.getElementById("colRight").innerHTML = `
+    document.getElementById("rightPanel").innerHTML = `
       <div class="side-block">
         ${sideBlockHeader("ข้อมูลลูกค้า")}
         <div class="side-block-body">
-          <div class="info-row"><span class="k">บริษัท</span><span class="v">${t.company}</span></div>
+          <div class="info-row"><span class="k">บริษัท</span><span class="v"><span class="name-link" onclick="filterInPage('${t.company.replace(/'/g,"\\'")}', event)">${t.company}</span></span></div>
+          <div class="info-row"><span class="k">ประเภทการให้บริการ</span><span class="v">${t.serviceType || "—"}</span></div>
           <div class="info-row"><span class="k">ช่องทางที่แจ้งเคส</span><span class="v">${t.channel}</span></div>
           <div class="info-row"><span class="k">อีเมล</span><span class="v">${t.email}</span></div>
           <div class="info-row"><span class="k">เบอร์โทรศัพท์</span><span class="v">${t.phone}</span></div>
-          ${t.isHoliday ? `<div style="margin-top:8px;">${breachBadgeHoliday()}</div>` : ""}
-          <div class="small" style="margin-top:6px; color:var(--text-mute);">ข้อมูลติดต่ออ้างอิงจากตอนที่เปิดเคส</div>
+          ${t.isHoliday ? `<div style="margin-top:8px;"><span class="badge badge-holiday"><span class="badge-dot"></span>เคสนี้รับ/ปิดในวันหยุด</span></div>` : ""}
+          <div class="small" style="margin-top:6px; color:var(--text-mute);">ข้อมูลติดต่ออ้างอิงจากตอนที่เปิดเคส · แก้ไขได้ผ่านปุ่ม "แก้ไขข้อมูลเคส" ด้านบน</div>
         </div>
       </div>
       <div class="side-block">
@@ -240,7 +293,7 @@
       <div class="side-block">
         ${sideBlockHeader("Sub-tasks / ทีมที่เกี่ยวข้อง")}
         <div class="side-block-body">
-          <div class="info-row"><span class="k">ผู้รับผิดชอบเคส</span><span class="v">${t.assignee}</span></div>
+          <div class="info-row"><span class="k">ผู้รับผิดชอบเคส</span><span class="v"><span class="name-link" onclick="filterInPage('${(t.assignee||"").replace(/'/g,"\\'")}', event)">${t.assignee}</span></span></div>
           <div class="info-row"><span class="k">อีเมลเซลที่ดูแลบัญชี</span><span class="v">${t.salesEmail}</span></div>
           <button class="btn btn-sm" style="width:100%; margin-top:8px;">+ เพิ่ม Co-assignee ทีมอื่น</button>
         </div>
@@ -257,8 +310,30 @@
     `;
   }
 
-  function breachBadgeHoliday(){
-    return `<span class="badge badge-holiday"><span class="badge-dot"></span>เคสนี้รับ/ปิดในวันหยุด</span>`;
+  function openEditCaseModal(){
+    if(!activeTicket) return;
+    openFormModal({
+      title:"แก้ไขข้อมูลเคส",
+      description:"แก้ไขชื่อบริษัท ประเภทการให้บริการ และช่องทางที่แจ้งเคสของ " + activeTicket.id,
+      fields:[
+        { id:"company", label:"ชื่อบริษัท", type:"text", value:activeTicket.company },
+        { id:"serviceType", label:"ประเภทการให้บริการ", type:"select", value:activeTicket.serviceType, options:SERVICE_TYPES.map(s => ({value:s, label:s})) },
+        { id:"channel", label:"ช่องทางที่แจ้งเคส", type:"select", value:activeTicket.channel, options:CHANNELS.map(c => ({value:c, label:c})) },
+      ],
+      confirmLabel:"บันทึกการแก้ไข",
+      onConfirm:(values) => {
+        const oldCompany = activeTicket.company;
+        activeTicket.company = values.company || activeTicket.company;
+        activeTicket.serviceType = values.serviceType;
+        activeTicket.channel = values.channel;
+        activeTicket.log.push({type:"system", text:`แก้ไขข้อมูลเคส (บริษัท/ประเภทบริการ/ช่องทาง) โดย ${u.name}${oldCompany !== activeTicket.company ? ` — เปลี่ยนชื่อบริษัทเป็น "${activeTicket.company}"` : ""}`, time:nowLabel()});
+        document.getElementById("chatCompany").textContent = activeTicket.company;
+        document.getElementById("chatTicketId").textContent = activeTicket.id + " · " + activeTicket.channel;
+        renderChatBody();
+        renderRightPanel();
+        applyFiltersAndRender();
+      }
+    });
   }
 
   function handleStatusChange(e){

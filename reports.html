@@ -171,7 +171,7 @@
     if(u.role !== "admin") rows = rows.filter(r => r.team === u.team);
     if(team) rows = rows.filter(r => r.team === team);
     document.getElementById("agentDetailBody").innerHTML = rows.map(r => `
-      <tr><td>${r.name}</td><td>${r.team}</td><td>${r.handled}</td><td>${r.closed}</td><td>${r.frt}</td><td>${r.csat}</td></tr>
+      <tr><td><span class="name-link" onclick="filterTicketsByText('${r.name.replace(/'/g,"\\'")}')">${r.name}</span></td><td>${r.team}</td><td>${r.handled}</td><td>${r.closed}</td><td>${r.frt}</td><td>${r.csat}</td></tr>
     `).join("") || `<tr><td colspan="6" class="empty">ไม่มีข้อมูลในเงื่อนไขนี้</td></tr>`;
   }
 
@@ -197,8 +197,8 @@
     document.getElementById("holidayCasesBody").innerHTML = rows.map(t => `
       <tr onclick="window.location.href='tickets.html?id=${t.id}'">
         <td class="mono">${t.id}</td>
-        <td>${t.company}</td>
-        <td>${t.assignee}</td>
+        <td><span class="name-link" onclick="filterTicketsByText('${t.company.replace(/'/g,"\\'")}', event)">${t.company}</span></td>
+        <td><span class="name-link" onclick="filterTicketsByText('${t.assignee.replace(/'/g,"\\'")}', event)">${t.assignee}</span></td>
         <td>${t.date}</td>
         <td><span class="badge badge-holiday"><span class="badge-dot"></span>เคสวันหยุด</span> ${statusBadge(t.status)}</td>
       </tr>

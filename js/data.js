@@ -24,6 +24,13 @@ const TEAMS = [
   { code:"MIH",     label:"MIH", groups:["Hardware"] },
 ];
 
+/* editable per-ticket classification fields */
+const SERVICE_TYPES = ["ให้คำปรึกษา", "แก้ไขปัญหาเทคนิค", "ติดตั้ง/อบรมการใช้งาน", "ต่ออายุ/สั่งซื้อสินค้า", "อื่นๆ"];
+const CHANNELS = ["LINE OA", "เว็บไซต์", "โทรศัพท์", "Walk-in", "อื่นๆ"];
+
+let ticketSeq = 10237;
+function nextTicketId(){ return "TCK-" + (ticketSeq++); }
+
 const MOCK_USERS = {
   admin:      { name:"คุณจักกิต",     role:"admin",      roleLabel:"Admin",      team:"ทั้งหมด",    initials:"JK" },
   supervisor: { name:"คุณพิมพ์ชนก",   role:"supervisor",  roleLabel:"Supervisor",  team:"Ci8baht", initials:"PC" },
@@ -52,7 +59,7 @@ const MOCK_EMPLOYEES = [
    `breach` is a separate overdue flag. `isHoliday` flags a case picked up/closed on a holiday. */
 
 const MOCK_TICKETS = [
-  { id:"TCK-10231", company:"บริษัท กรีนบิลด์ ดีไซน์ จำกัด", status:"in_progress", breach:true, isHoliday:false, priority:"สูง",
+  { id:"TCK-10231", company:"บริษัท กรีนบิลด์ ดีไซน์ จำกัด", status:"in_progress", breach:true, isHoliday:false, priority:"สูง", serviceType:"แก้ไขปัญหาเทคนิค",
     team:"Ci8baht", product:"AutoCAD", assignee:"คุณธีรภัทร", salesEmail:"kitti.sales@8baht.com",
     channel:"LINE OA", email:"purchase@greenbuild.co.th", phone:"081-234-5678",
     preview:"AutoCAD เปิดไม่ติด ขึ้น error ตั้งแต่เช้า...", time:"07:12", date:"2026-08-04", waiting:"42 นาที",
@@ -62,7 +69,7 @@ const MOCK_TICKETS = [
       {type:"agent", who:"คุณธีรภัทร", text:"รับทราบครับ ขอ screenshot อาการ error หน่อยได้ไหมครับ", time:"07:15"},
       {type:"internal", who:"คุณธีรภัทร", text:"@ทีม License เคสนี้ลูกค้า license อาจหมดอายุ ช่วยเช็ค portal ให้หน่อยครับ", time:"07:16"},
     ] },
-  { id:"TCK-10230", company:"หจก. โฟกัส เอ็นจิเนียริ่ง", status:"pending", breach:false, isHoliday:false, priority:"กลาง",
+  { id:"TCK-10230", company:"หจก. โฟกัส เอ็นจิเนียริ่ง", status:"pending", breach:false, isHoliday:false, priority:"กลาง", serviceType:"ต่ออายุ/สั่งซื้อสินค้า",
     team:"MIS", product:"SOLIDWORKS", assignee:"คุณณัฐพล", salesEmail:"orawan.sales@8baht.com",
     channel:"เว็บไซต์", email:"it@focuseng.co.th", phone:"02-345-6789",
     preview:"สอบถามการต่ออายุ SOLIDWORKS ปีนี้...", time:"09:40", date:"2026-08-04", waiting:"18 นาที",
@@ -72,7 +79,7 @@ const MOCK_TICKETS = [
       {type:"customer", text:"อยากสอบถามการต่ออายุ SOLIDWORKS ของบริษัทครับ ใกล้หมดอายุแล้ว", time:"09:41"},
       {type:"system", text:"เปลี่ยนสถานะเป็น รอดำเนินการ — เหตุผล: รอฝ่ายจัดซื้อของลูกค้ายืนยัน PO ก่อนดำเนินการต่ออายุ", time:"09:55"},
     ] },
-  { id:"TCK-10229", company:"บริษัท ทรีดี วิสัวไลซ์ จำกัด", status:"new", breach:false, isHoliday:false, priority:"ต่ำ",
+  { id:"TCK-10229", company:"บริษัท ทรีดี วิสัวไลซ์ จำกัด", status:"new", breach:false, isHoliday:false, priority:"ต่ำ", serviceType:"แก้ไขปัญหาเทคนิค",
     team:"MIH", product:"Shining 3D Scanner", assignee:"ยังไม่มอบหมาย", salesEmail:"napat.sales@8baht.com",
     channel:"LINE OA", email:"studio@3dvisualize.co.th", phone:"089-111-2233",
     preview:"เครื่องสแกน 3 มิติ สแกนแล้วพื้นผิวไม่เนียน...", time:"09:58", date:"2026-08-04", waiting:"2 นาที",
@@ -80,7 +87,7 @@ const MOCK_TICKETS = [
       {type:"system", text:"เคสถูกสร้างจาก LINE OA อัตโนมัติ", time:"09:58"},
       {type:"customer", text:"เครื่องสแกน 3 มิติ Shining 3D สแกนแล้วพื้นผิวไม่เนียน มีจุดขาดๆ ครับ", time:"09:58"},
     ] },
-  { id:"TCK-10225", company:"บริษัท อาคิเทค พลัส จำกัด", status:"closed", breach:false, isHoliday:true, priority:"กลาง",
+  { id:"TCK-10225", company:"บริษัท อาคิเทค พลัส จำกัด", status:"closed", breach:false, isHoliday:true, priority:"กลาง", serviceType:"แก้ไขปัญหาเทคนิค",
     team:"Ci3D", product:"Archicad", assignee:"คุณวราภรณ์", salesEmail:"kitti.sales@8baht.com",
     channel:"LINE OA", email:"admin@archiplus.co.th", phone:"086-555-7788",
     preview:"ปิดเคส: ลง Archicad สำเร็จแล้ว", time:"เมื่อวาน", date:"2026-08-03", waiting:"—",
@@ -93,7 +100,7 @@ const MOCK_TICKETS = [
       {type:"system", text:"ปิดเคส — สรุป: ลูกค้าติดตั้ง Archicad ไม่ผ่านเนื่องจาก antivirus บล็อกไฟล์ ให้ปิดชั่วคราวแล้วลงใหม่สำเร็จ", time:"เมื่อวาน 14:31"},
       {type:"system", text:"ส่งสรุปเคสให้ลูกค้าทางอีเมลและแจ้งเซลที่ดูแลบัญชีเรียบร้อยแล้ว (เคสนี้รับ/ปิดในวันหยุด)", time:"เมื่อวาน 14:31"},
     ] },
-  { id:"TCK-10218", company:"บริษัท เมทริกซ์ สตูดิโอ จำกัด", status:"cancel", breach:false, isHoliday:false, priority:"ต่ำ",
+  { id:"TCK-10218", company:"บริษัท เมทริกซ์ สตูดิโอ จำกัด", status:"cancel", breach:false, isHoliday:false, priority:"ต่ำ", serviceType:"แก้ไขปัญหาเทคนิค",
     team:"Ci2D", product:"GstarCAD", assignee:"คุณปกรณ์", salesEmail:"orawan.sales@8baht.com",
     channel:"เว็บไซต์", email:"account@matrixstudio.co.th", phone:"02-778-9900",
     preview:"ยกเลิกเคส: ลูกค้าแก้ปัญหาได้เองแล้ว", time:"2 วันก่อน", date:"2026-08-02", waiting:"—",
@@ -104,7 +111,7 @@ const MOCK_TICKETS = [
       {type:"customer", text:"แก้ได้แล้วครับ ลองเปิดจากโปรแกรมใหม่กว่าได้เลย ขอบคุณครับ", time:"2 วันก่อน 11:18"},
       {type:"system", text:"ยกเลิกเคส — เหตุผล: ลูกค้าแจ้งว่าแก้ปัญหาได้เองแล้วก่อนเจ้าหน้าที่ตอบกลับ", time:"2 วันก่อน 11:20"},
     ] },
-  { id:"TCK-10233", company:"บริษัท เอ็มไอเอส คอนซัลติ้ง จำกัด", status:"in_progress", breach:false, isHoliday:true, priority:"กลาง",
+  { id:"TCK-10233", company:"บริษัท เอ็มไอเอส คอนซัลติ้ง จำกัด", status:"in_progress", breach:false, isHoliday:true, priority:"กลาง", serviceType:"ติดตั้ง/อบรมการใช้งาน",
     team:"MIS", product:"Human Service", assignee:"คุณกานดา", salesEmail:"kitti.sales@8baht.com",
     channel:"เว็บไซต์", email:"ops@misconsult.co.th", phone:"063-222-4455",
     preview:"ขอนัดทีมเข้าไปติดตั้งและอบรมการใช้งานหน้างาน...", time:"10:20", date:"2026-08-04", waiting:"9 นาที",
@@ -113,7 +120,7 @@ const MOCK_TICKETS = [
       {type:"customer", text:"อยากขอนัดทีมเข้าไปติดตั้งและอบรมการใช้งานที่ออฟฟิศครับ", time:"10:20"},
       {type:"agent", who:"คุณกานดา", text:"รับทราบครับ ขอวันเวลาที่สะดวกเพื่อนัดทีมเข้าไปครับ (รับเคสนี้ระหว่างเวรวันหยุด)", time:"10:24"},
     ] },
-  { id:"TCK-10236", company:"บริษัท ไฮเทค แมนูแฟคเจอริ่ง จำกัด", status:"closed", breach:false, isHoliday:true, priority:"สูง",
+  { id:"TCK-10236", company:"บริษัท ไฮเทค แมนูแฟคเจอริ่ง จำกัด", status:"closed", breach:false, isHoliday:true, priority:"สูง", serviceType:"แก้ไขปัญหาเทคนิค",
     team:"MIH", product:"MAKERBOT", assignee:"คุณสุดา", salesEmail:"napat.sales@8baht.com",
     channel:"LINE OA", email:"support@hitechmfg.co.th", phone:"082-909-1122",
     preview:"ปิดเคส: เปลี่ยนหัวพิมพ์ MAKERBOT ให้แล้ว", time:"5 วันก่อน", date:"2026-07-30", waiting:"—",
