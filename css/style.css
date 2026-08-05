@@ -379,6 +379,9 @@ tbody tr{ cursor:pointer; }
 
 .side-block-header{ display:flex; justify-content:space-between; align-items:center; cursor:pointer; }
 .side-block.collapsed .side-block-body{ display:none; }
+.side-block-log{ background:var(--surface-2); border-top:3px solid var(--border-strong); border-bottom:none; }
+.side-block-log .side-block-header h4{ font-size:12px; text-transform:uppercase; letter-spacing:.05em; color:var(--text-soft); font-weight:700; }
+.side-block-log .side-block-body{ max-height:260px; overflow-y:auto; }
 
 /* ---------------------------------------------------------------- generic form modal (multi-field) */
 .modal-card-lg{ width:480px; }

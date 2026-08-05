@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
+<script>if(!localStorage.getItem("mock_role")){location.replace("index.html");}</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>เคส & แชท · 8Baht Support Console</title>
@@ -301,8 +302,8 @@
       ${t.pendingReason ? `<div class="side-block">${sideBlockHeader("เหตุผลที่รอดำเนินการ")}<div class="side-block-body"><div class="small">${t.pendingReason}</div></div></div>` : ""}
       ${t.cancelReason ? `<div class="side-block">${sideBlockHeader("เหตุผลที่ยกเลิก")}<div class="side-block-body"><div class="small">${t.cancelReason}</div></div></div>` : ""}
       ${t.closeSummary ? `<div class="side-block">${sideBlockHeader("สรุปการปิดเคส")}<div class="side-block-body"><div class="small">${t.closeSummary}</div></div></div>` : ""}
-      <div class="side-block collapsed">
-        ${sideBlockHeader("Audit Log (อ่านอย่างเดียว)")}
+      <div class="side-block side-block-log">
+        ${sideBlockHeader("Log — ประวัติการทำงาน (อ่านอย่างเดียว)")}
         <div class="side-block-body">
           ${t.log.map(m => `<div class="small" style="margin-bottom:6px;">${m.time} — ${m.who || 'ระบบ'}: ${m.type === 'internal' ? 'เพิ่ม Internal Note' : (m.type==='agent' ? 'ตอบลูกค้า' : (m.type==='customer' ? 'ลูกค้าส่งข้อความ' : m.text))}</div>`).join("")}
         </div>
